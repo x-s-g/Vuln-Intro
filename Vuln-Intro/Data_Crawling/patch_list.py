@@ -1,91 +1,112 @@
+import load_file
 import requests
 from lxml import etree
-import load_file  # Assumes `load_file.find_link(cve_id)` returns the commit hash
 
+# ==============================
+# Function: find_file_path
+# Description: Given a commit link, this function extracts the paths of affected files,
+# then traces their full commit history using the Linux kernel's web interface.
+# ==============================
+def find_file_path(link):
+    link_list = []
+    response = requests.get(link)
+    root = etree.HTML(response.content)
 
-class PatchHistoryFetcher:
-    def __init__(self, cve_id: str):
-        self.cve_id = cve_id
-        self.base_log_url = "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/log/"
-        self.base_commit_url = "https://git.kernel.org"
-        self.commit_hash = load_file.find_link(cve_id)
-        self.target_commit_url = f"{self.base_commit_url}/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id={self.commit_hash}"
-        self.output_path = f"CVE/{cve_id}/patch_list.txt"
+    # Get list of changed files from the diffstat table
+    filename = root.xpath("//table[@class='diffstat']/tr")
+    for i in filename:
+        # Try to get file path from different change types
+        s1 = i.xpath("./td[@class='upd']/a/text()")
+        s2 = i.xpath("./td[@class='del']/a/text()")
+        s3 = i.xpath("./td[@class='add']/a/text()")
+        s4 = i.xpath("./td[@class='mov']/a/text()")
 
-    def run(self):
-        """Main entry: download commit list and save filtered results."""
-        print(f"🔍 Target CVE: {self.cve_id}, commit: {self.commit_hash}")
-        file_log_links = self._find_file_log_links()
-        filtered_commits = self._filter_commits(file_log_links)
-        self._save_results(filtered_commits)
+        if s1 == [] and (s2 != [] or s3 != [] or s4 != []):
+            if s2 == [] and s3 == []:
+                s = s4
+            elif s3 == [] and s4 == []:
+                s = s2
+            else:
+                s = s3
+        else:
+            s = s1
 
-    def _find_file_log_links(self) -> list[str]:
-        """Extracts file path from the diff page, then crawls all its historical commits."""
-        link_list = []
-        response = requests.get(self.target_commit_url)
+        # Traverse commit history for this file path
+        if not s:
+            continue
+        link_list += collect_commits_for_path(s[0])
+
+    return link_list
+
+# ==============================
+# Function: collect_commits_for_path
+# Description: Collects commit links for a given file path with pagination handling.
+# ==============================
+def collect_commits_for_path(path_component):
+    collected_links = []
+    base_url = f"https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/log/{path_component}"
+    offset = 0
+
+    while True:
+        url = base_url + (f"?ofs={offset}" if offset else "")
+        response = requests.get(url)
         root = etree.HTML(response.content)
 
-        rows = root.xpath("//table[@class='diffstat']/tr")
-        for row in rows:
-            # Try multiple diff types to extract file path
-            path_candidates = (
-                row.xpath("./td[@class='upd']/a/text()")
-                or row.xpath("./td[@class='del']/a/text()")
-                or row.xpath("./td[@class='add']/a/text()")
-                or row.xpath("./td[@class='mov']/a/text()")
-            )
-            if not path_candidates:
-                continue
-            file_path = path_candidates[0]
-            link_list.extend(self._crawl_commit_history(file_path))
-        return link_list
+        # Extract commit links from the log table
+        commits = root.xpath("//div[@class='content']//table[@class='list nowrap']/tr")
+        for row in commits:
+            commit = row.xpath("./td[2]/a/@href")
+            if commit:
+                collected_links.append("https://git.kernel.org" + commit[0])
 
-    def _crawl_commit_history(self, file_path: str) -> list[str]:
-        """Recursively crawls all pages of commit history for a file."""
-        all_links = []
-        offset = 0
-        while True:
-            url = f"{self.base_log_url}{file_path}?ofs={offset}" if offset else f"{self.base_log_url}{file_path}"
-            response = requests.get(url)
-            root = etree.HTML(response.content)
+        # Check if there's a [next] page
+        next_btn = root.xpath("//div[@class='content']//ul[@class='pager']/li/a[text()='[next]']")
+        if not next_btn:
+            break
+        offset += 200
 
-            rows = root.xpath("//div[@class='content']//table[@class='list nowrap']/tr")
-            for row in rows:
-                commit = row.xpath("./td[2]/a/@href")
-                if commit:
-                    all_links.append(self.base_commit_url + commit[0])
+    return collected_links
 
-            next_page = root.xpath("//div[@class='content']//ul[@class='pager']/li/a[text()='[next]']")
-            if not next_page:
-                break
-            offset += 200
-        return all_links
+# ==============================
+# Function: filter_patch
+# Description: Filters out commits from a list that are older (lower) than the given patch commit.
+# ==============================
+def filter_patch(file_path, link):
+    link_list = []
+    flag = False
+    for path in file_path:
+        if link in path:
+            flag = True
+        if flag:
+            link_list.append(path)
+    return link_list
 
-    def _filter_commits(self, all_links: list[str]) -> list[str]:
-        """Filters out commits newer than the current CVE commit."""
-        result = []
-        found = False
-        for link in all_links:
-            if self.commit_hash in link:
-                found = True
-            if found:
-                result.append(link)
-        return result
+# ==============================
+# Function: main
+# Description: Main function to retrieve related historical commit links for a CVE.
+# ==============================
+def main(CVE_id):
+    # Step 1: Get main patch commit link from CVE ID
+    link = load_file.find_link(CVE_id)
+    print("Main commit:", link)
 
-    def _save_results(self, commit_links: list[str]):
-        """Writes the filtered commits to patch_list.txt."""
-        with open(self.output_path, "a", encoding="utf-8") as f:
-            for link in commit_links:
-                f.write(link + "\n")
-        print(f"✅ Saved {len(commit_links)} commit(s) to {self.output_path}")
+    # Step 2: Build full commit URL
+    hyper_link = f"https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id={link}"
 
+    # Step 3: Find all file-related commit paths
+    file_path = find_file_path(hyper_link)
 
-def main():
-    cve_id = "CVE-2020-25284"
-    fetcher = PatchHistoryFetcher(cve_id)
-    fetcher.run()
+    # Step 4: Filter out historical commits introduced before the main patch
+    low_version = filter_patch(file_path, link)
 
-# ====================== Program Entry ======================
+    # Optional: Write patch list to file (uncomment to use)
+    # for i in low_version:
+    #     with open(f"../{CVE_id}/patch_list.txt", "a") as file:
+    #         file.write(i + "\n")
 
+# ==============================
+# Entry Point
+# ==============================
 if __name__ == "__main__":
-    main()
+    CVE_id = "CVE-2023-6176"
+    main(CVE_id)
