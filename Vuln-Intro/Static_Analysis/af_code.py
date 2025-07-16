@@ -1,212 +1,240 @@
-from __future__ import annotations
-
-import os
-import re
-from pathlib import Path
-from typing import List, Tuple
-
-# ----------------------------------------------------------------------
-# import your existing filter module (add its path if needed)
-# ----------------------------------------------------------------------
 import sys
-sys.path.append('/Data_Crawling/filter')   # adjust if necessary
-# import filter                              # noqa: E402  (external module)
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Crawling')))
+import filter
+import re
 
 
-# ======================================================================
-# 1) Diff‑oriented helper
-# ======================================================================
-class PatchDiffHelper:
-    """Extract function names that appear in @@ … @@ hunks."""
-
-    _LOC_PATTERN = re.compile(r"@@ -\d+,\d+ \+\d+,\d+ @@")
-    _FUNC_PATTERN = re.compile(r"@@ -\d+,\d+ \+\d+,\d+ @@ (.*)$", re.MULTILINE)
-
-    @staticmethod
-    def _remove_loc_header(line: str) -> str:
-        """Strip @@ -a,b +c,d @@ header, keep the trailing function signature."""
-        return PatchDiffHelper._LOC_PATTERN.sub("", line).strip()
-
-    # ------------------------------------------------------------------
-    # public api
-    # ------------------------------------------------------------------
-    @classmethod
-    def extract_func_names(cls, diff_blocks: List[List[str]]) -> List[str]:
-        """
-        Collect unique function signature strings from diff hunks.
-
-        Parameters
-        ----------
-        diff_blocks : nested diff list, as returned by filter.main()
-
-        Returns
-        -------
-        unique function signature strings, e.g. 'static int foo'
-        """
-        sigs: List[str] = []
-
-        for block in diff_blocks:
-            for line in block:
-                if line.startswith("@@"):
-                    sig = cls._remove_loc_header(line)
-                    if sig:
-                        sigs.append(sig)
-
-        # de‑duplicate while preserving order
-        seen = set()
-        uniq = []
-        for s in sigs:
-            if s not in seen:
-                seen.add(s)
-                uniq.append(s)
-        return uniq
-
-
-# ======================================================================
-# 2) Source‑file scanner
-# ======================================================================
-class SourceScanner:
-    """Locate C functions inside a given source file."""
-
-    # leading C keywords that hint a new top‑level declaration
-    _DECL_KEYWORDS = (
-        "int", "void", "char", "float", "double", "struct",
-        "static", "long", "short", "__cold", "unsigned", "signed",
-    )
-
-    # ------------------------------------------------------------------
-    # locate function boundaries
-    # ------------------------------------------------------------------
-    @classmethod
-    def _find_func_range(cls, lines: List[str], signature: str) -> Tuple[int, int]:
-        """
-        Return (start_line, end_line_exclusive) for the first function that
-        matches `signature`. Lines are 1‑indexed to mimic editors.
-        """
-        start = end = 0
-        inside = False
-
-        for idx, text in enumerate(lines, 1):
-            # match signature (not a prototype ‑ no semicolon)
-            if not inside and signature in text and not text.rstrip().endswith(";"):
-                start = idx
-                inside = True
-                continue
-
-            # after we've entered a function, a new top‑level decl indicates end
-            if inside:
-                keyword_pat = re.compile(rf"^({'|'.join(map(re.escape, cls._DECL_KEYWORDS))})\b")
-                if keyword_pat.match(text) and not text.startswith((" ", "\t")):
-                    end = idx - 1
-                    break
-
-        if inside and end == 0:      # function reaches file EOF
-            end = len(lines)
-
-        # rewind to trailing '}' (pyc style)
-        while end > 0 and lines[end - 1].strip() != "}":
-            end -= 1
-        return start, end
-
-    # ------------------------------------------------------------------
-    # public api
-    # ------------------------------------------------------------------
-    @staticmethod
-    def find_c_file(cve_dir: Path) -> Path:
-        """Pick the first file whose name starts with 'af#'."""
-        for file in cve_dir.iterdir():
-            if file.name.startswith("af#"):
-                return file
-        raise FileNotFoundError("No source file starting with 'af#' found under %s" % cve_dir)
-
-    @classmethod
-    def extract_functions(cls, file_path: Path, signatures: List[str]) -> List[str]:
-        """Return cleaned source code (raw, not yet stripped) for each signature."""
-        lines = file_path.read_text(encoding="utf-8").splitlines(keepends=True)
-        output: List[str] = []
-
-        for sig in signatures:
-            beg, end = cls._find_func_range(lines, sig)
-            snippet = "".join(lines[beg - 1 : end]).strip() if beg and end else ""
-            output.append(snippet)
-        return output
-
-
-# ======================================================================
-# 3) High‑level orchestrator
-# ======================================================================
-class PatchCodeCollector:
+def extract_function_code(input_string, c_file_path):
     """
-    Main façade:
+    Extract complete function definitions from the C file based on patch input string.
 
-        Patch diff  -> function names  -> locate source  -> remove blanks & comments
+    :param input_string: The patch diff string containing function signatures.
+    :param c_file_path: Path to the C source file.
+    :return: List of full function code strings.
     """
+    pattern = r'@@ -\d+,\d+ \+\d+,\d+ @@ (.*)$'
+    matches = re.findall(pattern, input_string, re.MULTILINE)
 
-    # comment prefixes
-    _CMT_PREFIXES = ("//", "/*", "*/", "* ", "*\t")
+    with open(c_file_path, 'r') as file:
+        c_code = file.read()
 
-    # ------------------------------------------------------------
-    # helpers
-    # ------------------------------------------------------------
-    @classmethod
-    def _strip_comments_and_blanks(cls, code: str) -> str:
-        cleaned = []
-        for ln in code.splitlines():
-            s = ln.strip()
-            if not s or any(s.startswith(p) for p in cls._CMT_PREFIXES):
-                continue
-            cleaned.append(ln)
-        return "\n".join(cleaned)
+    function_code = []
+    for match in matches:
+        function_signature = match.strip()
+        if function_signature:
+            func_pattern = rf'{re.escape(function_signature)}\s*\(.*?\)\s*\{{[\s\S]*?\}}'
+            func_match = re.search(func_pattern, c_code)
+            if func_match:
+                function_code.append(func_match.group(0))
 
-    # ------------------------------------------------------------
-    # public api
-    # ------------------------------------------------------------
-    @classmethod
-    def collect(cls, cve_id: str, *, echo: bool = False) -> Tuple[List[str], int]:
-        """
-        Parameters
-        ----------
-        cve_id : str
-        echo   : bool  – print each cleaned snippet when True
-
-        Returns
-        -------
-        cleaned_code_list : List[str]
-            Source of each affected function, with comments / blanks removed.
-        skipped_line_count : int
-            Total number of blank‑or‑comment lines discarded across all functions.
-        """
-
-        # 1) get diff (already noise‑filtered)
-        diff_blocks = filter.main(cve_id)
-
-        # 2) extract function names from diff
-        func_sigs = PatchDiffHelper.extract_func_names(diff_blocks)
-
-        # 3) locate source file under CVE dir
-        cve_dir = Path("CVE-1") / cve_id
-        src_file = SourceScanner.find_c_file(cve_dir)
-
-        # 4) pull raw code snippets
-        raw_snippets = SourceScanner.extract_functions(src_file, func_sigs)
-
-        # 5) strip comments / blanks
-        cleaned, skipped = [], 0
-        for snippet in raw_snippets:
-            raw_lines = snippet.splitlines()
-            cleaned_code = cls._strip_comments_and_blanks(snippet)
-            skipped += len(raw_lines) - len(cleaned_code.splitlines())
-            cleaned.append(cleaned_code)
-
-            if echo:
-                print(f"\n=== {func_sigs[cleaned.index(cleaned_code)]} ===")
-                print(cleaned_code)
-
-        return cleaned, skipped
+    return function_code
 
 
-# ====================== Program Entry ======================
+def find_files_with_prefix(directory, prefix):
+    """
+    Find all files in a directory that start with a given prefix.
+
+    :param directory: Directory path.
+    :param prefix: Filename prefix string.
+    :return: List of matching filenames.
+    """
+    matching_files = []
+    for filename in os.listdir(directory):
+        if filename.startswith(prefix):
+            matching_files.append(filename)
+    return matching_files
+
+
+def remove_location_info(input_str):
+    """
+    Remove diff location information lines like '@@ -xx,xx +xx,xx @@' from a string.
+
+    :param input_str: Input string possibly containing diff location info.
+    :return: String with location info removed.
+    """
+    pattern = r'@@ -\d+,\d+ \+\d+,\d+ @@'
+    cleaned_str = re.sub(pattern, '', input_str).strip()
+    return cleaned_str
+
+
+def remove_duplicates(input_list):
+    """
+    Remove duplicate entries from a list while preserving order.
+
+    :param input_list: List possibly containing duplicates.
+    :return: List with duplicates removed.
+    """
+    seen = set()
+    output_list = []
+    for item in input_list:
+        if item not in seen:
+            seen.add(item)
+            output_list.append(item)
+    return output_list
+
+
+def find_patch_func(diffs):
+    """
+    Extract function names from diff data lines starting with '@@'.
+
+    :param diffs: List of diff hunks (lists of strings).
+    :return: List of unique function names found in diffs.
+    """
+    filename = []
+    for diff in diffs:
+        for line in diff:
+            if line.startswith("@@"):
+                file_name = remove_location_info(line)
+                filename.append(file_name)
+    filename = remove_duplicates(filename)
+    return filename
+
+
+def read_file_lines(file_path):
+    """
+    Read all lines from a file.
+
+    :param file_path: Path to the file.
+    :return: List of lines or None if file not found.
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.readlines()
+    except FileNotFoundError:
+        print(f"文件 {file_path} 未找到。")
+        return None
+
+
+def find_target_function(file_lines, func):
+    """
+    Find start and end line numbers of a function in a file by its name.
+
+    :param file_lines: List of lines of the file.
+    :param func: Function name to find.
+    :return: Tuple (start_line, end_line)
+    """
+    FIND = False
+    num = 0
+    start_num = 0
+    end_num = 0
+    func = func.strip()
+    for line in file_lines:
+        num += 1
+        if func in line and not line.split("\n", 1)[0].endswith(";"):
+            start_num = num
+            FIND = True
+            continue
+
+        if FIND:
+            keywords = ["int", "void", "char", "float", "double", "struct", "static", "__cold"]
+            pattern = re.compile(r'^(?:' + '|'.join(re.escape(keyword) for keyword in keywords) + r')\b')
+            match = pattern.match(line)
+            if match and not line[0].isspace():
+                end_num = num
+                break
+    if end_num == 0:
+        end_num = num
+    while file_lines[end_num - 1] != "}\n" and end_num > -1 and end_num <= len(file_lines):
+        end_num -= 1
+
+    return start_num, end_num + 1
+
+
+def extract_lines_from_file(filename, start_line, end_line):
+    """
+    Extract lines from a file between start_line and end_line inclusive.
+
+    :param filename: File path.
+    :param start_line: Starting line number.
+    :param end_line: Ending line number.
+    :return: String containing extracted lines concatenated.
+    """
+    lines = []
+    with open(filename, 'r') as file:
+        for current_line_number, line in enumerate(file, start=1):
+            if start_line <= current_line_number <= end_line:
+                lines.append(line)
+            elif current_line_number > end_line:
+                break
+    return ''.join(lines)
+
+
+def find_patch_code(func_name_list, cve_id):
+    """
+    Find the patch code snippets for the list of function names within the CVE directory.
+
+    :param func_name_list: List of function names.
+    :param cve_id: CVE identifier string.
+    :return: List of code snippets corresponding to the functions.
+    """
+    a_code_path = find_files_with_prefix("../" + cve_id, "af#")
+    file_lines = read_file_lines("../" + cve_id + "/" + a_code_path[0])
+    if file_lines is None:
+        print("文件不存在")
+        return False
+    code_list = []
+    for func in func_name_list:
+        a, b = find_target_function(file_lines, func)
+        code_list.append(extract_lines_from_file("../" + cve_id + "/" + a_code_path[0], a, b - 1).strip())
+    return code_list
+
+
+def code_filter(codes):
+    """
+    Remove empty lines and comment lines from code snippets.
+
+    :param codes: List of code snippet strings.
+    :return: Tuple (filtered_code_list, count_of_removed_lines)
+    """
+    new_codes = []
+    empty_lines_count = 0
+    comment_lines_count = 0
+
+    for code in codes:
+        lines = code.splitlines()
+        filtered_lines = []
+
+        for line in lines:
+            stripped_line = line.strip()
+            if not stripped_line:
+                empty_lines_count += 1
+            elif stripped_line.startswith('//') or stripped_line.startswith('/*') or stripped_line.startswith('*/') or stripped_line.startswith('* ') or stripped_line.startswith('*\t'):
+                comment_lines_count += 1
+            else:
+                filtered_lines.append(line)
+
+        new_codes.append('\n'.join(filtered_lines))
+    count = empty_lines_count + comment_lines_count
+    return new_codes, count
+
+
+def main(CVE_id):
+    """
+    Main function entry:
+    1. Obtain patch diffs by calling filter.main.
+    2. Extract function names from patch diffs.
+    3. Extract the full function code snippets from patch files.
+    4. Filter out comments and empty lines.
+    5. Return cleaned patch code and count of filtered lines.
+
+    :param CVE_id: CVE identifier string.
+    :return: Tuple (list_of_clean_code, count_of_filtered_lines)
+    """
+    list1 = filter.main(CVE_id)
+
+    func_name_list = find_patch_func(list1)
+
+    patch_code_list = find_patch_code(func_name_list, CVE_id)
+
+    new_patch_code_list, count = code_filter(patch_code_list)
+
+    return new_patch_code_list, count
+
+# ==============================
+# Main Entry Point
+# ==============================
+
 if __name__ == "__main__":
-    CVE = "CVE-2023-6111"
-    codes, removed = PatchCodeCollector.collect(CVE, echo=True)
-    print(f"\nTotal comment / blank lines removed: {removed}")
+    CVE_id = "CVE-2023-6176"
+    main(CVE_id)
