@@ -1,239 +1,189 @@
-#!/usr/bin/env python3
-"""
-impacting_line_finder.py
-========================
-
-Find code lines that *data‑impact* a specified target line in a C‑like
-source snippet. Supports **forward** (lines after the target) and
-**backward** (lines before the target) dependency tracing.
-
-Highlights
-----------
-- **ImpactingLineFinder** – core engine with *direction* parameter.
-- **ImpactingLinesResult** – dataclass with the mapping result.
-- **CLI** – ``python impacting_line_finder.py <file|-> <line> [-d forward|backward] [-v]``.
-
-Example (library)::
-
-    finder = ImpactingLineFinder(direction="backward", verbose=True)
-    result = finder.find(code_str, target_line=42)
-    for ln, txt in result.impacting_lines.items():
-        print(f"{ln}: {txt}")
-"""
-from __future__ import annotations
-
-import argparse
-import logging
 import re
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, Set
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-
-# ---------------------------------------------------------------------------
-# Dataclasses
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class ImpactingLinesResult:
-    """Holds the mapping from line numbers to source code lines."""
-
-    impacting_lines: Dict[int, str]
-
-
-# ---------------------------------------------------------------------------
-# Core class
-# ---------------------------------------------------------------------------
-
-
-class ImpactingLineFinder:
-    """Detect lines that have data‑flow impact on *target_line*.
-
-    Parameters
-    ----------
-    direction : {"forward", "backward"}
-        Direction to search for impacting lines relative to *target_line*.
-    verbose : bool, default ``False``
-        Enable debug‑level logging.
+def find_impacting_lines(code, target_line):
     """
+    Find lines in the code before the target line that impact the target line by
+    defining or affecting variables used in the target line.
 
-    def __init__(self, *, direction: str = "backward", verbose: bool = False):
-        direction = direction.lower()
-        if direction not in {"forward", "backward"}:
-            raise ValueError("direction must be 'forward' or 'backward'")
-        self.direction = direction
-        if verbose:
-            logger.setLevel(logging.DEBUG)
+    Args:
+        code (str): The source code as a multiline string.
+        target_line (int): The line number of the target line (1-indexed).
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-    def find(self, code: str, target_line: int) -> ImpactingLinesResult:
-        if self.direction == "forward":
-            mapping = self._find_forward(code, target_line)
-        else:
-            mapping = self._find_backward(code, target_line)
-        return ImpactingLinesResult(impacting_lines=mapping)
+    Returns:
+        dict: Ordered dictionary of impacting lines {line_number: code_line}.
+    """
+    lines = code.strip().splitlines()
+    dependencies = set()
+    impacting_lines = {}
 
-    # ------------------------------------------------------------------
-    # Forward search (lines after target)
-    # ------------------------------------------------------------------
-    def _find_forward(self, code: str, target_line: int) -> Dict[int, str]:
-        lines = code.strip().splitlines()
-        if target_line < 1 or target_line > len(lines):
-            raise ValueError("target_line out of range")
+    # Extract variables used in the target line as dependencies
+    target_code = lines[target_line - 1].strip()
+    dependencies = extract_variables(target_code)
+    print("target_code:", target_code)
+    print("dependencies:", dependencies)
 
-        target_src = lines[target_line - 1].strip()
-        deps: Set[str] = self._extract_variables(target_src)
-        logger.debug("[forward] target(%d): %s", target_line, target_src)
-        logger.debug("[forward] initial dependencies: %s", deps)
+    # Traverse backwards from the line before the target line to the top
+    for lineno in range(target_line - 1, 0, -1):
+        line = lines[lineno - 1].strip()
 
-        impacting: Dict[int, str] = {}
-
-        for lineno in range(target_line + 1, len(lines) + 1):
-            src = lines[lineno - 1].strip()
-            vars_in_line = self._extract_variables(src)
-
-            common = {d for d in deps for v in vars_in_line if d.split("->", 1)[0] == v.split("->", 1)[0]}
-            if common:
-                impacting[lineno] = src
-                deps -= common
-                logger.debug("[forward] line %d impacts via %s", lineno, common)
-
-            if not deps:
-                break
-        return impacting
-
-    # ------------------------------------------------------------------
-    # Backward search (lines before target)
-    # ------------------------------------------------------------------
-    def _find_backward(self, code: str, target_line: int) -> Dict[int, str]:
-        lines = code.strip().splitlines()
-        if target_line < 1 or target_line > len(lines):
-            raise ValueError("target_line out of range")
-
-        target_src = lines[target_line - 1].strip()
-        deps: Set[str] = self._extract_variables(target_src)
-        logger.debug("[backward] target(%d): %s", target_line, target_src)
-        logger.debug("[backward] initial dependencies: %s", deps)
-
-        impacting: Dict[int, str] = {}
-
-        # Scan backwards
-        for lineno in range(target_line - 1, 0, -1):
-            src = lines[lineno - 1].strip()
-
-            # Check assignments or pointer accesses (var = expr or ptr->field)
-            if "=" in src or "->" in src:
-                var_name, _ = self._extract_assignment(src)
-                if var_name:
-                    matched = [d for d in deps if var_name == d.split("->", 1)[0]]
-                    if matched:
-                        impacting[lineno] = src
-                        deps -= set(matched)
-                        logger.debug("[backward] line %d impacts via %s", lineno, matched)
-
-            # Check function calls
-            if self._is_function_call(src):
-                vars_in_call = self._extract_variables(src)
-                matched = [d for d in deps for v in vars_in_call if v == d.split("->", 1)[0]]
-                if matched:
-                    impacting[lineno] = src
-                    deps -= set(matched)
-                    logger.debug("[backward] line %d impacts via call %s", lineno, matched)
-
-            if not deps:
-                break
-
-        return dict(sorted(impacting.items()))
-
-    # ------------------------------------------------------------------
-    # Helper routines (static)
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _extract_variables(expr: str) -> Set[str]:
-        expr = expr.strip().rstrip(";")
-        expr = re.sub(r"\b\w+\s*\(", "(", expr)  # strip fn names
-
-        # return statement
-        if expr.startswith("return "):
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", expr[len("return "):]))
-
-        # args inside first parentheses
-        m = re.search(r"\(([^()]*)\)", expr)
-        if m:
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", m.group(1)))
-
-        # assignment right‑hand side
-        if "=" in expr:
-            _, right = expr.split("=", 1)
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", right))
-
-        return set()
-
-    @staticmethod
-    def _extract_assignment(line: str) -> (str, str):
-        line = line.strip()
-
+        # Check if the line contains an assignment
         if "=" in line:
-            left, right = line.split("=", 1)
-            var_name = left.strip().split()[-1]
-            if var_name.startswith("*"):
-                var_name = var_name[1:]
-            return var_name, right.strip()
-        elif "->" in line:
-            left, right = line.split("->", 1)
-            return left.strip(), right.strip()
-        return "", line
+            var_name, expression = extract_assignment(line)
+            var_name = var_name.strip()
+            flag_dep = False
+            var = []
+            for dep in dependencies:
+                if var_name == dep.split("->", 1)[0]:
+                    flag_dep = True
+                    var.append(dep)
+            if flag_dep and var:
+                impacting_lines[lineno] = line
+                for v in var:
+                    dependencies.discard(v)  # Remove handled dependencies
 
-    @staticmethod
-    def _is_function_call(line: str) -> bool:
-        line = re.sub(r"\s*//.*$", "", line).strip()
-        pattern = r"^\s*\w+\s*\([^)]*\)\s*(?:;|\s*$)"
-        if re.search(pattern, line):
-            return not any(k in line for k in ["while", "if", "for", "switch", "case", "default", "do"])
-        return False
+            # Also check if the assigned variable itself is in dependencies
+            if var_name in dependencies:
+                impacting_lines[lineno] = line
+                dependencies.discard(var_name)
+
+        # Check if the line is a function call and uses dependencies
+        if is_function_call(line):
+            func_call_vars = extract_variables(line)
+            flag_dep = False
+            var = []
+            for dep in dependencies:
+                for v in func_call_vars:
+                    if v == dep.split("->", 1)[0]:
+                        flag_dep = True
+                        var.append(dep)
+            if flag_dep and var:
+                impacting_lines[lineno] = line
+                for v in var:
+                    dependencies.discard(v)
+
+            if dependencies.intersection(func_call_vars):
+                intersec = dependencies.intersection(func_call_vars)
+                impacting_lines[lineno] = line
+                for v in intersec:
+                    dependencies.discard(v)
+
+    # Sort impacting lines by line number ascending
+    impacting_lines_sorted = dict(sorted(impacting_lines.items()))
+    return impacting_lines_sorted
 
 
-# ---------------------------------------------------------------------------
-# CLI helpers
-# ---------------------------------------------------------------------------
+def extract_variables(expression):
+    """
+    Extract variable names (including pointer or struct member access) from an expression.
 
-def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Find lines that data‑impact a target line (forward or backward).")
-    p.add_argument("file", type=Path, help="Source file path or '-' for STDIN")
-    p.add_argument("line", type=int, help="Target line number (1‑based)")
-    p.add_argument("--direction", "-d", choices=["forward", "backward"], default="backward", help="Search direction (default: backward)")
-    p.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
-    return p.parse_args()
+    Args:
+        expression (str): Code expression string.
+
+    Returns:
+        set: Set of variable names found in the expression.
+    """
+    expression = expression.strip().rstrip(';')
+
+    # Remove function names, keep only contents inside parentheses
+    expression = re.sub(r'\b\w+\s*\(', '(', expression)
+
+    # Handle return statements separately
+    if expression.startswith("return "):
+        return set(re.findall(r'\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b', expression[len("return "):]))
+
+    # Extract content inside parentheses (function call arguments)
+    variables_str = re.findall(r'\((.*?)\)', expression)
+    if variables_str:
+        return {var.strip() for var in re.findall(r'\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b', variables_str[0])}
+
+    # Extract variables on right side of assignment
+    if "=" in expression:
+        _, expression_right = expression.split("=", 1)
+        return set(re.findall(r'\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b', expression_right))
+
+    # Default: extract all matching variable patterns
+    return set()
 
 
-def _read_source(path: Path | str) -> str:
-    if path == "-":
-        import sys
-        return sys.stdin.read()
-    return Path(path).read_text(encoding="utf-8")
+def extract_assignment(line):
+    """
+    Extract the variable being assigned and the assigned expression from a line.
+
+    Args:
+        line (str): Code line.
+
+    Returns:
+        tuple: (variable_name, assigned_expression)
+    """
+    line = line.strip()
+
+    if "=" in line:
+        left, right = line.split("=", 1)
+        left = left.strip()
+        right = right.strip()
+
+        var_name = left.split()[-1]
+        if var_name.startswith('*'):
+            var_name = var_name[1:]
+        return var_name, right
+
+    elif "->" in line:
+        left, right = line.split("->", 1)
+        return left.strip(), right.strip()
+
+    return "", line
 
 
-def main() -> None:  # pragma: no cover
-    args = _parse_args()
-    finder = ImpactingLineFinder(direction=args.direction, verbose=args.verbose)
-    src = _read_source(args.file)
-    result = finder.find(src, target_line=args.line)
+def is_function_call(line):
+    """
+    Check if a line is a function call (excluding control structures).
 
-    if not result.impacting_lines:
-        print("No impacting lines found.")
-    else:
-        print("Impacting lines:")
-        for ln, txt in result.impacting_lines.items():
-            print(f"{ln}: {txt}")
+    Args:
+        line (str): Code line.
 
-# ====================== Program Entry ======================
-if __name__ == "__main__":  # pragma: no cover
-    main()
+    Returns:
+        bool: True if line looks like a function call, False otherwise.
+    """
+    line = re.sub(r'\s*//.*$', '', line).strip()
+    pattern = r'^\s*\w+\s*\([^)]*\)\s*(?:;|\s*$)'
+    if re.search(pattern, line):
+        return not any(keyword in line for keyword in ['while', 'if', 'for', 'switch', 'case', 'default', 'do'])
+    return False
+
+
+# Example usage:
+code = """
+struct nft_set_elem_catchall *catchall, *next;
+const struct nft_set *set = gc->set;
+struct nft_elem_priv *elem_priv;
+struct nft_set_ext *ext;
+while(catchall, next, &set->catchall_list, list)
+{
+    ext = nft_set_elem_ext(set, catchall->elem);
+    if (!nft_set_elem_expired(ext))
+        continue;
+    if (nft_set_elem_is_dead(ext))
+        goto dead_elem;
+    nft_set_elem_dead(ext);
+dead_elem:
+    if (sync)
+        gc = nft_trans_gc_queue_sync(gc, GFP_ATOMIC);
+    else
+        gc = nft_trans_gc_queue_async(gc, gc_seq, GFP_ATOMIC);
+    if (!gc)
+        return NULL;
+    elem_priv = catchall->elem;
+    if (sync) {
+        nft_setelem_data_deactivate(gc->net, gc->set, elem_priv);
+        nft_setelem_catchall_destroy(catchall);
+    }
+    nft_trans_gc_elem_add(gc, elem_priv);
+}
+return gc;
+"""
+target_line = 27
+
+impacting_lines = find_impacting_lines(code, target_line)
+print("Impacting lines:")
+for lineno, code_line in impacting_lines.items():
+    print(f"Line {lineno}: {code_line}")
