@@ -1,139 +1,123 @@
-from __future__ import annotations
-
-import argparse
-import logging
 import re
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, Set
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+def find_impacting_lines_back(code, target_line):
+    """
+    Find lines after the target line that depend on variables used in the target line.
 
+    Args:
+        code (str): Multiline string of code.
+        target_line (int): Line number (1-based) in the code to analyze.
 
-@dataclass
-class ImpactingLinesResult:
-    """Holds the mapping from line numbers to source code lines."""
+    Returns:
+        dict: Mapping of line numbers to code lines that impact the target line variables.
+    """
+    lines = code.strip().splitlines()
+    impacting_lines = {}
 
-    impacting_lines: Dict[int, str]
+    # Extract variables used in the target line
+    target_code = lines[target_line - 1].strip()
+    dependencies = extract_variables_back(target_code)
+    print("target_code:", target_code)
+    print("dependencies:", dependencies)
 
+    # Check subsequent lines for usage of these variables
+    for lineno in range(target_line + 1, len(lines) + 1):
+        line = lines[lineno - 1].strip()
 
-class ImpactingLineFinder:
-    """Core engine for backward data‑dependency line discovery."""
+        current_vars = extract_variables_back(line)
+        # print(f"Line {lineno}: {line}")
+        # print("current_vars:", current_vars)
 
-    def __init__(self, *, verbose: bool = False):
-        if verbose:
-            logger.setLevel(logging.DEBUG)
+        flag = False
+        var = []
+        for i in current_vars:
+            for j in dependencies:
+                # Match if variables match considering pointer/struct access (like ->)
+                if i == j.split("->", 1)[0] or j == i.split("->", 1)[0]:
+                    flag = True
+                    var.append(j)
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-    def find(self, code: str, target_line: int) -> ImpactingLinesResult:
-        """Return lines that impact *target_line*.
+        if flag and var:
+            impacting_lines[lineno] = line
+            for i in var:
+                dependencies.discard(i)  # Remove processed dependencies
 
-        Parameters
-        ----------
-        code : str
-            Full source snippet.
-        target_line : int
-            One‑based index of the target line inside *code*.
-        """
-        lines = code.strip().splitlines()
-        if target_line < 1 or target_line > len(lines):
-            raise ValueError("target_line is out of range for provided code snippet")
+        # Also add if current line contains any remaining dependencies
+        intersect = dependencies.intersection(current_vars)
+        if intersect:
+            impacting_lines[lineno] = line
+            for i in intersect:
+                dependencies.discard(i)
 
-        target_src = lines[target_line - 1].strip()
-        dependencies: Set[str] = self._extract_variables(target_src)
+    return impacting_lines
 
-        logger.debug("Target (%d): %s", target_line, target_src)
-        logger.debug("Initial dependencies: %s", dependencies)
+def extract_variables_back(expression):
+    """
+    Extract variables from a given code expression line.
 
-        impacting: Dict[int, str] = {}
+    Args:
+        expression (str): A single line of code.
 
-        # Scan *forward* to propagate dependencies to subsequent lines.
-        for lineno in range(target_line + 1, len(lines) + 1):
-            src = lines[lineno - 1].strip()
-            vars_in_line = self._extract_variables(src)
+    Returns:
+        set: Set of variable names detected.
+    """
+    expression = expression.strip().rstrip(';')
 
-            # If any existing dependency matches vars in current line -> impacting
-            common = {dep for dep in dependencies for v in vars_in_line if dep.split("->", 1)[0] == v.split("->", 1)[0]}
-            if common:
-                impacting[lineno] = src
-                logger.debug("Line %d impacts via %s -> %s", lineno, common, src)
-                # Remove resolved dependencies to avoid duplicates
-                dependencies -= common
+    # Remove function names before '(' to isolate arguments
+    expression = re.sub(r'\b\w+\s*\(', '(', expression)
 
-            # Additionally, any *new* vars used together with deps extend the dependency set
-            if dependencies & vars_in_line:
-                impacting[lineno] = src
-                dependencies -= dependencies & vars_in_line
+    # Extract variables from return statements
+    if expression.startswith("return "):
+        return set(re.findall(r'\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b', expression[len("return "):]))
 
-            if not dependencies:
-                break  # All dependencies resolved
+    # Extract variables inside parentheses (function calls, etc.)
+    variables_str = re.findall(r'\((.*?)\)', expression)
 
-        return ImpactingLinesResult(impacting_lines=impacting)
+    if variables_str:
+        # Extract variables supporting pointer and dot notation
+        return {var.strip() for var in re.findall(r'\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b', variables_str[0])}
 
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _extract_variables(expression: str) -> Set[str]:
-        """Lightweight parser for variable identifiers in a C‑like expression."""
-        expression = expression.strip().rstrip(";")
-        expression = re.sub(r"\b\w+\s*\(", "(", expression)  # drop fn names but keep args
+    # Handle assignment expressions, extract right side variables
+    if "=" in expression:
+        _, expression_right = expression.split("=", 1)
+        return set(re.findall(r'\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b', expression_right))
 
-        # Return statement
-        if expression.startswith("return "):
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", expression[len("return "):]))
+    # Default: extract all variable-like tokens
+    return set()
 
-        # Args inside first pair of parentheses
-        m = re.search(r"\(([^()]*)\)", expression)
-        if m:
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", m.group(1)))
+# Example usage:
+code = """
+struct nft_set_elem_catchall *catchall, *next;
+const struct nft_set *set = gc->set;
+struct nft_elem_priv *elem_priv;
+struct nft_set_ext *ext;
+while(catchall, next, &set->catchall_list, list)
+{
+    ext = nft_set_elem_ext(set, catchall->elem);
+    if (!nft_set_elem_expired(ext))
+        continue;
+    if (nft_set_elem_is_dead(ext))
+        goto dead_elem;
+    nft_set_elem_dead(ext);
+dead_elem:
+    if (sync)
+        gc = nft_trans_gc_queue_sync(gc, GFP_ATOMIC);
+    else
+        gc = nft_trans_gc_queue_async(gc, gc_seq, GFP_ATOMIC);
+    if (!gc)
+        return NULL;
+    elem_priv = catchall->elem;
+    if (sync) {
+        nft_setelem_data_deactivate(gc->net, gc->set, elem_priv);
+        nft_setelem_catchall_destroy(catchall);
+    }
+    nft_trans_gc_elem_add(gc, elem_priv);
+}
+return gc;
+"""
+target_line = 25  # Specified line number
 
-        # Assignment – right‑hand side
-        if "=" in expression:
-            _, right = expression.split("=", 1)
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", right))
-
-        return set()
-
-
-# ------------------------------------------------------------------
-# CLI helpers
-# ------------------------------------------------------------------
-
-def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Find lines that impact a target line via variable usage.")
-    p.add_argument("file", type=Path, help="Path to C/C‑like source file (use - for STDIN)")
-    p.add_argument("line", type=int, help="One‑based line number to analyze")
-    p.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
-    return p.parse_args()
-
-
-def _read_source(path: Path | str) -> str:
-    if path == "-":  # stdin passthrough
-        import sys
-        return sys.stdin.read()
-    return Path(path).read_text(encoding="utf-8")
-
-
-def main() -> None:  # pragma: no cover
-    args = _parse_args()
-    finder = ImpactingLineFinder(verbose=args.verbose)
-    source = _read_source(args.file)
-    result = finder.find(source, target_line=args.line)
-
-    if not result.impacting_lines:
-        print("No impacting lines found.")
-    else:
-        print("Impacting lines:")
-        for lineno, src in result.impacting_lines.items():
-            print(f"{lineno}: {src}")
-
-# ====================== Program Entry ======================
-if __name__ == "__main__":  # pragma: no cover
-    main()
+impacting_lines = find_impacting_lines_back(code, target_line)
+print("Impacting lines:")
+for lineno, code_line in impacting_lines.items():
+    print(f"Line {lineno}: {code_line}")
