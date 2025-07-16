@@ -1,217 +1,121 @@
-from __future__ import annotations
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Crawling')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Static_Analysis')))
+import filter
+import patch_label
+import os
+import traver
+import af_code
+import time
 
-import argparse
-import logging
-import re
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, Set
+def sort_by_second_element(data):
+    # Sort the list by the second element of each sublist
+    sorted_data = sorted(data, key=lambda x: x[1])
+    return sorted_data
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-
-# ---------------------------------------------------------------------------
-# Dataclasses
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class ImpactingLinesResult:
-    """Holds the mapping from line numbers to source code lines."""
-
-    impacting_lines: Dict[int, str]
-
-
-# ---------------------------------------------------------------------------
-# Core class
-# ---------------------------------------------------------------------------
-
-
-class ImpactingLineFinder:
-    """Detect lines that have data‑flow impact on *target_line*.
-
-    Parameters
-    ----------
-    direction : {"forward", "backward"}
-        Direction to search for impacting lines relative to *target_line*.
-    verbose : bool, default ``False``
-        Enable debug‑level logging.
-    """
-
-    def __init__(self, *, direction: str = "backward", verbose: bool = False):
-        direction = direction.lower()
-        if direction not in {"forward", "backward"}:
-            raise ValueError("direction must be 'forward' or 'backward'")
-        self.direction = direction
-        if verbose:
-            logger.setLevel(logging.DEBUG)
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-    def find(self, code: str, target_line: int) -> ImpactingLinesResult:
-        if self.direction == "forward":
-            mapping = self._find_forward(code, target_line)
+def main(cve_id):
+    # Get filtered patch content list
+    list2 = filter.main(CVE_id)
+    # Find functions changed in the patch
+    func_name_list = af_code.find_patch_func(list2)
+    # Get vulnerable links from patch_label
+    vuln_links = patch_label.main(cve_id)
+    result = []
+    for i in range(len(list2)):
+        diff_line = vuln_links[i]
+        # Sort the diff lines by second element (line number)
+        sorted_data = sort_by_second_element(diff_line)
+        for data in sorted_data:
+            print(data[2])
+        if sorted_data:
+            func_name = sorted_data[0][0]
         else:
-            mapping = self._find_backward(code, target_line)
-        return ImpactingLinesResult(impacting_lines=mapping)
+            continue
+        print(func_name)
+        name = traver.extract_function_name(func_name)
+        # print(name)
 
-    # ------------------------------------------------------------------
-    # Forward search (lines after target)
-    # ------------------------------------------------------------------
-    def _find_forward(self, code: str, target_line: int) -> Dict[int, str]:
-        lines = code.strip().splitlines()
-        if target_line < 1 or target_line > len(lines):
-            raise ValueError("target_line out of range")
+        # Iterate over files in change_low_version directory
+        for filename in os.listdir("../" + cve_id + "/change_low_version"):
+            # Build full file path
+            file_path = os.path.join("../" + cve_id + "/change_low_version", filename)
+            # print(file_path)
+            with open(file_path, "r") as file1:
+                patchs = file1.readlines()
+            file1.close()
+            diffs = []
+            diff = []
+            # Split patches by @@ lines
+            for patch in patchs:
+                if "@@" in patch:
+                    # print(patch)
+                    if diff == []:
+                        diff.append(patch)
+                    else:
+                        diffs.append(diff)
+                        diff = []
+                        diff.append(patch)
+                else:
+                    diff.append(patch)
+            diffs.append(diff)
+            # print(diffs)
+            # Search added lines (+) for matching changed lines in sorted_data
+            for diff in diffs:
+                for line in diff:
+                    line = line.strip()
+                    if line.startswith("+"):
+                        # print(line)
+                        for data in sorted_data:
+                            ev_line = line.split("+", 1)[1]
+                            ev_line.strip()
+                            # print(ev_line)
+                            if data[2] in ev_line:
+                                print(file_path)
+                                result.append(file_path)
 
-        target_src = lines[target_line - 1].strip()
-        deps: Set[str] = self._extract_variables(target_src)
-        logger.debug("[forward] target(%d): %s", target_line, target_src)
-        logger.debug("[forward] initial dependencies: %s", deps)
+    # If no results, try searching by function names only
+    if result == []:
+        for name in func_name_list:
+            name = traver.extract_function_name(name)
+            # print(name)
+            for filename in os.listdir("../" + cve_id + "/change_low_version"):
+                # Build full file path
+                file_path = os.path.join("../" + cve_id + "/change_low_version", filename)
+                # print(file_path)
+                with open(file_path, "r") as file1:
+                    patchs = file1.readlines()
+                file1.close()
+                diffs = []
+                diff = []
+                # Split patches by @@ lines
+                for patch in patchs:
+                    if "@@" in patch:
+                        # print(patch)
+                        if diff == []:
+                            diff.append(patch)
+                        else:
+                            diffs.append(diff)
+                            diff = []
+                            diff.append(patch)
+                    else:
+                        diff.append(patch)
+                diffs.append(diff)
+                # print(diffs)
 
-        impacting: Dict[int, str] = {}
-
-        for lineno in range(target_line + 1, len(lines) + 1):
-            src = lines[lineno - 1].strip()
-            vars_in_line = self._extract_variables(src)
-
-            common = {d for d in deps for v in vars_in_line if d.split("->", 1)[0] == v.split("->", 1)[0]}
-            if common:
-                impacting[lineno] = src
-                deps -= common
-                logger.debug("[forward] line %d impacts via %s", lineno, common)
-
-            if not deps:
-                break
-        return impacting
-
-    # ------------------------------------------------------------------
-    # Backward search (lines before target)
-    # ------------------------------------------------------------------
-    def _find_backward(self, code: str, target_line: int) -> Dict[int, str]:
-        lines = code.strip().splitlines()
-        if target_line < 1 or target_line > len(lines):
-            raise ValueError("target_line out of range")
-
-        target_src = lines[target_line - 1].strip()
-        deps: Set[str] = self._extract_variables(target_src)
-        logger.debug("[backward] target(%d): %s", target_line, target_src)
-        logger.debug("[backward] initial dependencies: %s", deps)
-
-        impacting: Dict[int, str] = {}
-
-        # Scan backwards
-        for lineno in range(target_line - 1, 0, -1):
-            src = lines[lineno - 1].strip()
-
-            # Check assignments or pointer accesses (var = expr or ptr->field)
-            if "=" in src or "->" in src:
-                var_name, _ = self._extract_assignment(src)
-                if var_name:
-                    matched = [d for d in deps if var_name == d.split("->", 1)[0]]
-                    if matched:
-                        impacting[lineno] = src
-                        deps -= set(matched)
-                        logger.debug("[backward] line %d impacts via %s", lineno, matched)
-
-            # Check function calls
-            if self._is_function_call(src):
-                vars_in_call = self._extract_variables(src)
-                matched = [d for d in deps for v in vars_in_call if v == d.split("->", 1)[0]]
-                if matched:
-                    impacting[lineno] = src
-                    deps -= set(matched)
-                    logger.debug("[backward] line %d impacts via call %s", lineno, matched)
-
-            if not deps:
-                break
-
-        return dict(sorted(impacting.items()))
-
-    # ------------------------------------------------------------------
-    # Helper routines (static)
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _extract_variables(expr: str) -> Set[str]:
-        expr = expr.strip().rstrip(";")
-        expr = re.sub(r"\b\w+\s*\(", "(", expr)  # strip fn names
-
-        # return statement
-        if expr.startswith("return "):
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", expr[len("return "):] ))
-
-        # args inside first parentheses
-        m = re.search(r"\(([^()]*)\)", expr)
-        if m:
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", m.group(1)))
-
-        # assignment right‑hand side
-        if "=" in expr:
-            _, right = expr.split("=", 1)
-            return set(re.findall(r"\b[a-zA-Z_]\w*(?:->\w+|\.\w+)?\b", right))
-
-        return set()
-
-    @staticmethod
-    def _extract_assignment(line: str) -> (str, str):
-        line = line.strip()
-
-        if "=" in line:
-            left, right = line.split("=", 1)
-            var_name = left.strip().split()[-1]
-            if var_name.startswith("*"):
-                var_name = var_name[1:]
-            return var_name, right.strip()
-        elif "->" in line:
-            left, right = line.split("->", 1)
-            return left.strip(), right.strip()
-        return "", line
-
-    @staticmethod
-    def _is_function_call(line: str) -> bool:
-        line = re.sub(r"\s*//.*$", "", line).strip()
-        pattern = r"^\s*\w+\s*\([^)]*\)\s*(?:;|\s*$)"
-        if re.search(pattern, line):
-            return not any(k in line for k in ["while", "if", "for", "switch", "case", "default", "do"])
-        return False
+                # Search added lines (+) for function name
+                for diff in diffs:
+                    for line in diff:
+                        line = line.strip()
+                        if line.startswith("+"):
+                            if name in line:
+                                print(file_path)
 
 
-# ---------------------------------------------------------------------------
-# CLI helpers
-# ---------------------------------------------------------------------------
+# ==============================
+# Main Entry Point
+# ==============================
 
-def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Find lines that data‑impact a target line (forward or backward).")
-    p.add_argument("file", type=Path, help="Source file path or '-' for STDIN")
-    p.add_argument("line", type=int, help="Target line number (1‑based)")
-    p.add_argument("--direction", "-d", choices=["forward", "backward"], default="backward", help="Search direction (default: backward)")
-    p.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
-    return p.parse_args()
-
-
-def _read_source(path: Path | str) -> str:
-    if path == "-":
-        import sys
-        return sys.stdin.read()
-    return Path(path).read_text(encoding="utf-8")
-
-
-def main() -> None:  # pragma: no cover
-    args = _parse_args()
-    finder = ImpactingLineFinder(direction=args.direction, verbose=args.verbose)
-    src = _read_source(args.file)
-    result = finder.find(src, target_line=args.line)
-
-    if not result.impacting_lines:
-        print("No impacting lines found.")
-    else:
-        print("Impacting lines:")
-        for ln, txt in result.impacting_lines.items():
-            print(f"{ln}: {txt}")
-
-# ====================== Program Entry ======================
-if __name__ == "__main__":  # pragma: no cover
-    main()
+if __name__ == "__main__":
+    CVE_id = "CVE-2023-6176"
+    main(CVE_id)
