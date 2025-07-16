@@ -1,127 +1,74 @@
-from __future__ import annotations
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Crawling')))
+import af_code
+import filter
+import re_refactor
 
-import argparse
-import logging
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List
+def find_patch_code(func_name_list, cve_id):
+    """
+    Extract the code blocks of specified functions from patch files.
 
-try:
-    import filter as diff_filter  # Renamed to avoid shadowing built‑in filter
-    import af_code
-    import re_refactor
-except ModuleNotFoundError as exc:  # pragma: no cover
-    raise ModuleNotFoundError(
-        "Required helper modules ('filter', 'af_code', 're_refactor') are missing."
-    ) from exc
+    Args:
+        func_name_list (list): List of function names to extract.
+        cve_id (str): The CVE identifier to locate the patch directory.
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+    Returns:
+        list: List of extracted function code strings.
+    """
+    # Find patch files starting with "bf#" prefix
+    b_code_path = af_code.find_files_with_prefix("../" + cve_id, "bf#")
+    file_lines = af_code.read_file_lines("../" + cve_id + "/" + b_code_path[0])
+    if file_lines is None:
+        print("File not found")
+        return False
 
-ROOT_DIR = Path("CVE-1")  # Base directory where CVE folders reside
+    code_list = []
+    for func in func_name_list:
+        # Locate function start and end lines
+        start_line, end_line = af_code.find_target_function(file_lines, func)
+        # Extract lines of the function from file and strip trailing spaces
+        code_list.append(af_code.extract_lines_from_file("../" + cve_id + "/" + b_code_path[0], start_line, end_line - 1).strip())
 
-
-@dataclass
-class CVEPatchCodeExtractionResult:
-    """Container for extraction output."""
-
-    cleaned_code: List[str]
-    change_count: int
-
-
-class CVEPatchCodeExtractor:
-    """Encapsulates patch code extraction workflow for a single CVE."""
-
-    def __init__(self, cve_id: str, *, verbose: bool = False):
-        if not cve_id.startswith("CVE-"):
-            raise ValueError("Invalid CVE identifier format (expected 'CVE-YYYY-NNNN').")
-        self.cve_id = cve_id
-        self.verbose = verbose
-        if self.verbose:
-            logger.setLevel(logging.DEBUG)
-
-    # ---------------------------------------------------------------------
-    # Public API
-    # ---------------------------------------------------------------------
-    def run(self) -> CVEPatchCodeExtractionResult:
-        """Execute the full extraction pipeline."""
-        logger.info("Starting patch code extraction for %s", self.cve_id)
-
-        # 1. Load patch diff blocks
-        patch_blocks = diff_filter.main(self.cve_id)
-        logger.debug("Loaded %d diff blocks", len(patch_blocks))
-
-        # 2. Identify changed function names
-        func_names = af_code.find_patch_func(patch_blocks)
-        logger.debug("Detected %d function(s) in patch", len(func_names))
-
-        # 3. Handle function renaming (old -> new)
-        renamed, old_name, new_name = re_refactor.old_and_new_func(self.cve_id)
-        if renamed:
-            func_names = [new_name[0] if fn == old_name[0] else fn for fn in func_names]
-            logger.debug("Applied renaming: %s -> %s", old_name[0], new_name[0])
-
-        # 4. Locate and extract raw function code
-        raw_code_list = self._find_patch_code(func_names)
-        logger.debug("Extracted raw code for %d function(s)", len(raw_code_list))
-
-        # 5. Remove comments / blank lines
-        cleaned_code_list, change_count = af_code.code_filter(raw_code_list)
-        logger.debug("Code cleaned; %d lines retained", sum(map(len, cleaned_code_list)))
-
-        return CVEPatchCodeExtractionResult(cleaned_code=cleaned_code_list, change_count=change_count)
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-    def _find_patch_code(self, func_names: List[str]) -> List[str]:
-        """Locate the patched file and extract code blocks for the specified functions."""
-        cve_dir = ROOT_DIR / self.cve_id
-        bf_files = af_code.find_files_with_prefix(str(cve_dir), "bf#")
-        if not bf_files:
-            raise FileNotFoundError(f"No patched files (prefix 'bf#') found in {cve_dir}")
-
-        patch_file_path = cve_dir / bf_files[0]
-        file_lines = af_code.read_file_lines(patch_file_path)
-        if file_lines is None:
-            raise FileNotFoundError(f"File {patch_file_path} cannot be read.")
-
-        extracted: List[str] = []
-        for func in func_names:
-            start, end = af_code.find_target_function(file_lines, func)
-            code = af_code.extract_lines_from_file(patch_file_path, start, end - 1).strip()
-            extracted.append(code)
-            if self.verbose:
-                logger.debug("Function %s: lines %d‑%d extracted", func, start, end - 1)
-        return extracted
-
-# -------------------------------------------------------------------------
-# CLI entry point
-# -------------------------------------------------------------------------
-
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Extract cleaned source code of functions affected by a CVE patch."
-    )
-    parser.add_argument("cve_id", help="CVE identifier, e.g., CVE-2023-6111")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
-    return parser.parse_args()
+    return code_list
 
 
-def main() -> None:  # pragma: no cover
-    args = _parse_args()
-    extractor = CVEPatchCodeExtractor(args.cve_id, verbose=args.verbose)
-    result = extractor.run()
+def main(CVE_id):
+    """
+    Main entry function to extract filtered patch code list for a CVE.
 
-    logger.info(
-        "Extraction complete: %d function(s) processed, %d change lines detected.",
-        len(result.cleaned_code),
-        result.change_count,
-    )
+    Args:
+        CVE_id (str): The CVE identifier.
 
-# ====================== Program Entry ======================
-if __name__ == "__main__":  # pragma: no cover
-    main()
+    Returns:
+        tuple: (new_patch_code_list, count)
+            - new_patch_code_list: List of patch code snippets without comments and empty lines.
+            - count: Number of removed comment and empty lines.
+    """
+    # Get the raw patch diffs
+    list1 = filter.main(CVE_id)
+
+    # Find changed function names from patch diffs
+    func_name_list = af_code.find_patch_func(list1)
+
+    # Check if function names have changed between old and new versions
+    flag, old_names, new_names = re_refactor.old_and_new_func(CVE_id)
+    if flag:
+        # Replace old function names with new names in the function list
+        func_name_list = [new_names[0] if x == old_names[0] else x for x in func_name_list]
+
+    # Extract code blocks for the identified functions
+    patch_code_list = find_patch_code(func_name_list, CVE_id)
+
+    # Filter out comments and empty lines, get count of filtered lines
+    new_patch_code_list, count = af_code.code_filter(patch_code_list)
+
+    return new_patch_code_list, count
+
+# ==============================
+# Main Entry Point
+# ==============================
+
+if __name__ == "__main__":
+    CVE_id = "CVE-2023-6176"
+    main(CVE_id)
