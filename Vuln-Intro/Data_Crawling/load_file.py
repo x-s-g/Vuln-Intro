@@ -1,140 +1,126 @@
-from __future__ import annotations
 import re
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Optional, Tuple
-
 import requests
 from lxml import etree
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import os
 
-# ------------------------- Utility Layer -------------------------
-def build_retry_session(retries: int = 3, backoff: float = 0.4) -> requests.Session:
-    """Returns a requests.Session with automatic retries and backoff."""
-    session = requests.Session()
-    retry = Retry(
-        total=retries,
-        backoff_factor=backoff,
-        status_forcelist=(429, 500, 502, 503, 504),
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
-
-
-def extract_commit_hash(url: str) -> Optional[str]:
-    """Extracts a Git commit hash (7–40 hex characters) from a given URL."""
-    patterns = [
-        r"/commit(?:/\?id=|/)([0-9a-fA-F]{7,40})",
-        r"[?&]id=([0-9a-fA-F]{7,40})",
-        r"/([0-9a-fA-F]{7,40})$",
-        r"([^/]{7,40})$",
-    ]
-    for pat in patterns:
-        m = re.search(pat, url)
-        if m:
-            return m.group(1)
-    return None
-
-
-# ------------------------- Core Logic Layer -------------------------
-@dataclass
-class LinuxKernelPatchFetcher:
-    """Main interface to fetch patch, A/B source files, and diff hunks for a CVE."""
-    cve_id: str
-    workdir: Path = Path("CVE")
-    session: requests.Session = field(default_factory=build_retry_session)
-    git_root: str = "https://git.kernel.org"
-    commit_template: str = (
-        "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id={hash}"
-    )
-
-    # --- Main execution ---
-    def run(self) -> Tuple[str, Path]:
-        """
-        Full execution pipeline:
-        1. Locate the commit hash from the NVD CVE detail page
-        2. Download patch and pre/post-fix (A/B) versions of modified files
-        3. Return the commit hash and the output directory
-        """
-        commit_hash = self._find_commit_hash()
-        if not commit_hash:
-            raise RuntimeError(f"Failed to locate commit link for {self.cve_id} on NVD.")
-
-        cve_dir = self._prepare_folder()
-        commit_url = self.commit_template.format(hash=commit_hash)
-
-        self._download_ab_files(commit_url, cve_dir)
-        self._download_patch(commit_url, cve_dir)
-        return commit_hash, cve_dir
-
-    # --- Step 1: Extract commit hash from NVD page ---
-    def _find_commit_hash(self) -> Optional[str]:
-        url = f"https://nvd.nist.gov/vuln/detail/{self.cve_id}"
-        r = self.session.get(url, timeout=10)
-        root = etree.HTML(r.content)
-        trs = root.xpath(
-            "//div[@id='vulnHyperlinksPanel']//table[contains(@class,'detail-table')]/tbody/tr"
-        )
-        for tr in trs:
-            hrefs = tr.xpath("./td/a/@href")
-            if not hrefs:
-                continue
-            href = hrefs[0]
-            if any(domain in href for domain in ("github.com", "git.kernel.org")):
-                return extract_commit_hash(href)
+# ==============================
+# Function: extract_commit_hash
+# Description: Extracts the commit hash from a given URL using regular expressions.
+# ==============================
+def extract_commit_hash(url):
+    pattern = r'/commit(?:/\?id=|/)([0-9a-fA-F]{40})'
+    match = re.search(pattern, url)
+    if match is None:
+        pattern = r'id=([a-f0-9]+)$'
+        match = re.search(pattern, url)
+    if match is None:
+        match = re.search(r'/([0-9a-fA-F]+)$', url)
+    if match is None:
+        match = re.search(r'[^/]+$', url)
+    if match:
+        return match.group(1)
+    else:
         return None
 
-    # --- Step 2: Prepare the output directory ---
-    def _prepare_folder(self) -> Path:
-        out_dir = self.workdir / self.cve_id
-        out_dir.mkdir(parents=True, exist_ok=True)
-        return out_dir
+# ==============================
+# Function: find_link
+# Description: Retrieves the GitHub or Kernel.org commit hash linked to a CVE ID from NVD.
+# ==============================
+def find_link(CVE_id):
+    cve_link = "https://nvd.nist.gov/vuln/detail/" + CVE_id
+    response = requests.get(cve_link)
+    root = etree.HTML(response.content)
+    items = root.xpath("//div[@id='vulnHyperlinksPanel']//table[@class='table table-striped table-condensed table-bordered detail-table']/tbody/tr")
+    for i in items:
+        s = i.xpath('./td/a/@href')
+        if "https://git.kernel.org" in s[0] or "https://github.com" in s[0]:
+            commit = extract_commit_hash(s[0])
+            return commit
 
-    # --- Step 3: Download pre- and post-patch versions of affected files ---
-    def _download_ab_files(self, commit_url: str, out_dir: Path) -> None:
-        r = self.session.get(commit_url, timeout=10)
-        root = etree.HTML(r.content)
-        heads = root.xpath("//table[@class='diff']/tr/td//div[@class='head']")
+# ==============================
+# Function: create_folder
+# Description: Creates a directory if it doesn't already exist.
+# ==============================
+def create_folder(path):
+    try:
+        os.makedirs(path, exist_ok=True)
+        print(f"Folder '{path}' created successfully.")
+    except Exception as e:
+        print(f"Error creating folder: {e}")
 
-        for head in heads:
-            a_href, b_href = head.xpath("./a/@href")
-            a_name, b_name = head.xpath("./a/text()")
-            for href, name, tag in (
-                (a_href, a_name, "af"),
-                (b_href, b_name, "bf"),
-            ):
-                clean_name = name.replace("/", "#")
-                blob_url = self.git_root + href
-                blob_html = self.session.get(blob_url, timeout=10).content
-                blob_root = etree.HTML(blob_html)
-                plain_href = blob_root.xpath("//div[@class='content']/a/@href")[0]
-                plain_txt = self.session.get(self.git_root + plain_href, timeout=10).text
-                (out_dir / f"{tag}#{clean_name}").write_text(plain_txt, encoding="utf-8")
+# ==============================
+# Function: ab_file
+# Description: Downloads and saves the before and after source files from a kernel.org commit.
+# ==============================
+def ab_file(hyper_link, CVE_id):
+    response = requests.get(hyper_link)
+    root = etree.HTML(response.content)
+    file_ab = root.xpath("//table[@class='diff']/tr/td//div[@class='head']")
+    for i in file_ab:
+        # Before patch
+        s_a_name = i.xpath("./a[1]/text()")[0].replace('/', '#')
+        s_a = i.xpath("./a[1]/@href")[0]
+        response1 = requests.get("https://git.kernel.org" + s_a)
+        root1 = etree.HTML(response1.content)
+        plain = root1.xpath("//div[@class='content']/a/@href")[0]
+        response2 = requests.get("https://git.kernel.org" + plain)
+        with open(f"../{CVE_id}/af#{s_a_name}", "w") as file:
+            file.write(response2.text)
 
-    # --- Step 4: Extract patch hunks from the diff table ---
-    def _download_patch(self, commit_url: str, out_dir: Path) -> None:
-        r = self.session.get(commit_url, timeout=10)
-        root = etree.HTML(r.content)
-        diffs = root.xpath("//table[@class='diff']/tr/td//div")
-        patch_path = out_dir / "patch.txt"
-        for d in diffs:
-            if d.xpath("@class")[0] in {"hunk", "add", "del", "ctx"}:
-                patch_path.write_text(d.text + "\n", encoding="utf-8", append=True)
+        # After patch
+        s_b_name = i.xpath("./a[2]/text()")[0].replace('/', '#')
+        s_b = i.xpath("./a[2]/@href")[0]
+        response1 = requests.get("https://git.kernel.org" + s_b)
+        root1 = etree.HTML(response1.content)
+        plain = root1.xpath("//div[@class='content']/a/@href")[0]
+        response2 = requests.get("https://git.kernel.org" + plain)
+        with open(f"../{CVE_id}/bf#{s_b_name}", "w") as file:
+            file.write(response2.text)
 
+# ==============================
+# Function: get_patch
+# Description: Extracts and writes the patch diff contents (hunks, additions, deletions, context) to a file.
+# ==============================
+def get_patch(link, cve_id):
+    response = requests.get(link)
+    root = etree.HTML(response.content)
+    diffs = root.xpath("//table[@class='diff']/tr/td//div")
+    for diff in diffs:
+        diff_class = diff.xpath("@class")
+        if diff_class in [['hunk'], ['add'], ['del'], ['ctx']]:
+            with open(f"../{cve_id}/patch.txt", "a") as file:
+                file.write(diff.xpath("text()")[0] + "\n")
 
-# ====================== Program Entry ======================
-def cli(cve_id: str) -> None:
-    """Simple CLI entry for testing or batch usage."""
-    fetcher = LinuxKernelPatchFetcher(cve_id)
-    commit_hash, folder = fetcher.run()
-    print(f"{cve_id} -> commit {commit_hash}")
-    print(f"Output saved in: {folder.resolve()}")
+# ==============================
+# Function: load_file
+# Description: Main logic to fetch patch information and source files for a given CVE ID.
+# ==============================
+def load_file(cve_id):
+    # Step 1: Find patch commit link
+    link = find_link(cve_id)
+    if not link:
+        print(f"No commit link found for {cve_id}")
+        return
 
+    hyper_link = f"https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id={link}"
+
+    # Step 2: Create folder
+    # create_folder(f"CVE/{cve_id}")
+    #
+    # # Step 3: Download before/after source files
+    # ab_file(hyper_link, cve_id)
+    #
+    # # Step 4: Download patch diff
+    # get_patch(hyper_link, cve_id)
+
+# ==============================
+# Main Entry Point
+# ==============================
+def main():
+    CVE_id = "CVE-2023-6176"  # Replace this with any other CVE ID to test
+    load_file(CVE_id)
+    # To test a specific patch manually:
+    # get_patch("https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/net/netfilter/nf_tables_api.c?id=4a9e12ea7e70223555ec010bec9f711089ce96f6", "test")
 
 if __name__ == "__main__":
-    # Example usage: fetch patch for CVE-2020-25284
-    cli("CVE-2020-25284")
+    main()
