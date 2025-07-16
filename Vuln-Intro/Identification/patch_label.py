@@ -1,10 +1,11 @@
-"""
-Module: cve_trace_analysis.py
+import sys
+import os
 
-This module provides functions to trace vulnerability-related code changes in CVE patches.
-It performs data flow analysis, code diff alignment, and change impact tracking.
-"""
+# Add parent directories to the module search path for custom imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Crawling')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Static_Analysis')))
 
+# Import internal modules and standard libraries
 import af_ast
 import af_cfg
 import af_code
@@ -20,14 +21,12 @@ from collections import Counter
 
 def find_impacting_lines_back(lines, target_line):
     """
-    Find lines that are forward data-dependent on the target line.
-
-    Args:
-        lines (list): List of C code lines.
-        target_line (int): Line number to analyze.
-
+    Find lines impacted by the target line (data flow forward).
+    Parameters:
+        lines (list): All lines of code in the function.
+        target_line (int): Target line number (1-based index).
     Returns:
-        dict: Mapping from line number to line content for impacting lines.
+        dict: Line numbers and code strings that are impacted.
     """
     impacting_lines = {}
     target_code = lines[target_line - 1].strip()
@@ -60,13 +59,11 @@ def find_impacting_lines_back(lines, target_line):
 
 def extract_variables_back(expression):
     """
-    Extract variables from a C expression for backward analysis.
-
-    Args:
-        expression (str): C expression.
-
+    Extract variables used in a line (forward direction, for target impact analysis).
+    Parameters:
+        expression (str): A single line of C code.
     Returns:
-        set: Set of variables.
+        set: Set of variable names extracted.
     """
     expression = expression.strip().rstrip(';')
     expression = re.sub(r'\b\w+\s*\(', '(', expression)
@@ -87,14 +84,12 @@ def extract_variables_back(expression):
 
 def find_impacting_lines_front(lines, target_line):
     """
-    Find lines that are backward data-dependent (impact the target line).
-
-    Args:
-        lines (list): Code lines.
-        target_line (int): Line index.
-
+    Find lines that influence the target line (data flow backward).
+    Parameters:
+        lines (list): All lines of code in the function.
+        target_line (int): Target line number (1-based index).
     Returns:
-        dict: Impacting lines sorted by line number.
+        dict: Line numbers and code strings that affect the target.
     """
     dependencies = set()
     impacting_lines = {}
@@ -117,7 +112,6 @@ def find_impacting_lines_front(lines, target_line):
                 impacting_lines[lineno] = line
                 for i in var:
                     dependencies.discard(i)
-
             if var_name in dependencies:
                 impacting_lines[lineno] = line
                 dependencies.discard(var_name)
@@ -141,22 +135,18 @@ def find_impacting_lines_front(lines, target_line):
                 for i in flag:
                     dependencies.discard(i)
 
-    return dict(sorted(impacting_lines.items()))
+    impacting_lines_sorted = dict(sorted(impacting_lines.items()))
+    return impacting_lines_sorted
 
 
 def extract_variables_front(expression):
     """
-    Extract variables for front (backward) analysis.
-
-    Args:
-        expression (str): C expression.
-
-    Returns:
-        set: Variables extracted.
+    Extract variables from a line of code (used in backward analysis).
     """
     expression = expression.strip().rstrip(';')
     variables = set()
     expression = re.sub(r'\([^\(\)]*\*\)', '', expression)
+
     variable_pattern = re.compile(r'\b[a-zA-Z_]\w*(?:\s*->\s*[a-zA-Z_]\w*|\s*\.\s*[a-zA-Z_]\w*)*\b')
     exclude_pattern = re.compile(
         r'^(if|else|for|while|return|switch|case|default|break|continue|do|sizeof|typedef|enum|struct|union|static|extern|const|volatile|register|signed|unsigned|int|long|short|float|double|char|void|unsigned|static|inline|__inline|goto|restrict|_Bool|_Complex|_Imaginary|alignof|alignas|asm|auto|bool|complex|imaginary|noreturn|static_assert|thread_local|_Atomic|_Generic|_Noreturn|_Static_assert|_Thread_local|[A-Z_]+)$')
@@ -173,13 +163,7 @@ def extract_variables_front(expression):
 
 def extract_assignment(line):
     """
-    Parse an assignment line and return (variable, expression).
-
-    Args:
-        line (str): C code line.
-
-    Returns:
-        tuple: (lhs variable name, rhs expression).
+    Extract the left and right parts of an assignment expression.
     """
     line = line.strip()
     if "=" in line:
@@ -192,19 +176,15 @@ def extract_assignment(line):
         return var_name, right
     elif "->" in line:
         left, right = line.split("->", 1)
-        return left.strip(), right.strip()
+        left = left.strip()
+        right = right.strip()
+        return left, right
     return "", line
 
 
 def is_function_call(line):
     """
-    Check if a line is a function call.
-
-    Args:
-        line (str): C source code line.
-
-    Returns:
-        bool: True if line is function call, False otherwise.
+    Determine if a line is a function call (not a control structure).
     """
     line = re.sub(r'\s*//.*$', '', line).strip()
     pattern = r'^\s*\w+\s*\([^)]*\)\s*(?:;|\s*$)'
@@ -215,41 +195,43 @@ def is_function_call(line):
 
 def b_to_a(target, code_b, code_a, bf_paths, diff):
     """
-    Map a line number from the 'before patch' version (code_b) to the 'after patch' version (code_a).
+    Map a target line number in code_b to its corresponding line number in code_a.
 
-    Args:
-        target (int): Line number in the 'b' file.
-        code_b (list): List of lines in 'b' version.
-        code_a (list): List of lines in 'a' version.
-        bf_paths (list): CFG paths of 'b'.
-        diff (list): Diff block.
+    Parameters:
+        target (int): Target line number in code_b.
+        code_b (list): List of lines from code version B.
+        code_a (list): List of lines from code version A.
+        bf_paths (list): Paths related to code_b for analysis.
+        diff (list): List of diff lines for reference.
 
     Returns:
-        int or None: Mapped line number in 'a' or None if not found.
+        int or None: Corresponding line number in code_a if found, else None.
     """
     flag = False
     count = 0
     pre = None
     next = None
     target_line = None
+
+    # Iterate over code_b lines to find target and its surrounding lines
     for line in code_b:
         count += 1
         if count == target:
             target_line = line
             flag = True
-        if flag == False:
+        if not flag:
             flag_pre = False
             for bf_path in bf_paths:
                 if line in bf_path[0] and bf_path[0].startswith("+"):
                     flag_pre = True
-            if flag_pre == False:
+            if not flag_pre:
                 pre = line
-        if flag == True and count != target:
+        if flag and count != target:
             flag_next = False
             for bf_path in bf_paths:
                 if line in bf_path[0] and bf_path[0].startswith("+"):
                     flag_next = True
-            if flag_next == False:
+            if not flag_next:
                 next = line
                 break
 
@@ -257,15 +239,16 @@ def b_to_a(target, code_b, code_a, bf_paths, diff):
     flag_next = False
     target_num = None
     count = 0
+
+    # Search corresponding line number in code_a based on pre and next lines
     for line in code_a:
         count += 1
         if line == pre:
             flag_pre = True
-        if flag_pre == True:
+        if flag_pre:
             if line == target_line:
                 target_num = count
-
-        if line == next and target_num != None:
+        if line == next and target_num is not None:
             return target_num
 
     return target_num
@@ -275,34 +258,47 @@ def remove_duplicates(nested_list):
     """
     Remove duplicate sublists from a nested list.
 
-    Args:
-        nested_list (list of list): A list containing sublists.
+    Parameters:
+        nested_list (list of lists): Input nested list with possible duplicates.
 
     Returns:
-        list: A list with unique sublists only.
+        list of lists: Nested list with duplicates removed.
     """
     seen = set()
     unique_list = []
-
     for sublist in nested_list:
         sublist_tuple = tuple(sublist)
         if sublist_tuple not in seen:
             seen.add(sublist_tuple)
             unique_list.append(sublist)
-
     return unique_list
 
 
 def label_A(bf_path, list1_b, list1_a, diff, num, bf_paths):
     """
-    Trace data dependencies of added lines (label 'A') forward and backward.
+    Trace data flow for added code, returning upstream and downstream impacting code lines.
+
+    Rules:
+    - If both front and back are additions, discard.
+    - If one side is addition, record the other.
+    - If neither side is addition, record both.
+
+    Parameters:
+        bf_path (list): Path info related to added code.
+        list1_b (list): Lines of code from B version.
+        list1_a (list): Lines of code from A version.
+        diff (list): Diff lines.
+        num (int): Index for current diff block.
+        bf_paths (list): Paths for code B.
 
     Returns:
-        list: List of traces including function name, line number, and code.
+        list: List of traces showing impacting lines and their info.
     """
     front = []
     back = []
     traces = []
+
+    # Iterate paths to find impacting lines front and back of the target
     for path in bf_path[4:]:
         codes = []
         flag = None
@@ -344,23 +340,25 @@ def label_A(bf_path, list1_b, list1_a, diff, num, bf_paths):
     back = remove_duplicates(back)
 
     for f in front:
-        trace = []
         if f is None:
             continue
         front_num = b_to_a(f[0], list1_b[num].splitlines(), list1_a[num].splitlines(), bf_paths, diff)
-        trace.append(af_code.remove_location_info(diff[0]))
-        trace.append(front_num)
-        trace.append(f[1])
+        trace = [
+            af_code.remove_location_info(diff[0]),
+            front_num,
+            f[1]
+        ]
         traces.append(trace)
 
     for b in back:
-        trace = []
         if b is None:
             continue
         back_num = b_to_a(b[0], list1_b[num].splitlines(), list1_a[num].splitlines(), bf_paths, diff)
-        trace.append(af_code.remove_location_info(diff[0]))
-        trace.append(back_num)
-        trace.append(b[1])
+        trace = [
+            af_code.remove_location_info(diff[0]),
+            back_num,
+            b[1]
+        ]
         traces.append(trace)
 
     traces = remove_duplicates(traces)
@@ -369,73 +367,101 @@ def label_A(bf_path, list1_b, list1_a, diff, num, bf_paths):
 
 def label_D(af_path, diff):
     """
-    Trace single-line deleted code (label 'D').
+    Trace deleted code lines.
+
+    Parameters:
+        af_path (list): Path info related to deleted code.
+        diff (list): Diff lines.
 
     Returns:
-        list or None: [function name, line number, code] or None.
+        list or None: Trace info for deleted line or None if not applicable.
     """
     if af_path[2] is not None:
-        trace = []
-        trace.append(af_code.remove_location_info(diff[0]))
-        trace.append(af_path[2].coord.line)
-        trace.append(af_path[0].split("-", 1)[1])
+        trace = [
+            af_code.remove_location_info(diff[0]),
+            af_path[2].coord.line,
+            af_path[0].split("-", 1)[1]
+        ]
         return trace
-    else:
-        return None
+    return None
 
 
 def label_M_1(af_path, diff):
     """
-    Trace deleted code labeled M.1 by capturing the affected line.
+    Trace modified code, version M.1.
+
+    Parameters:
+        af_path (list): Path info related to modified code.
+        diff (list): Diff lines.
 
     Returns:
-        list: [function name, line number, code]
+        list: Trace info of the modified line.
     """
-    trace = []
-    trace.append(af_code.remove_location_info(diff[0]))
-    trace.append(af_path[2].coord.line)
-    trace.append(af_path[0].split("-", 1)[1])
+    trace = [
+        af_code.remove_location_info(diff[0]),
+        af_path[2].coord.line,
+        af_path[0].split("-", 1)[1]
+    ]
     return trace
 
 
 def label_M_2(af_path, diff):
     """
-    Trace deleted code labeled M.2 (identical structure to M.1).
+    Trace modified code, version M.2.
+
+    Parameters:
+        af_path (list): Path info related to modified code.
+        diff (list): Diff lines.
 
     Returns:
-        list: [function name, line number, code]
+        list: Trace info of the modified line.
     """
-    trace = []
-    trace.append(af_code.remove_location_info(diff[0]))
-    trace.append(af_path[2].coord.line)
-    trace.append(af_path[0].split("-", 1)[1])
+    trace = [
+        af_code.remove_location_info(diff[0]),
+        af_path[2].coord.line,
+        af_path[0].split("-", 1)[1]
+    ]
     return trace
 
 
 def label_M_3(af_path, diff):
     """
-    Trace deleted code labeled M.3 (identical structure to M.1).
+    Trace modified code, version M.3.
+
+    Parameters:
+        af_path (list): Path info related to modified code.
+        diff (list): Diff lines.
 
     Returns:
-        list: [function name, line number, code]
+        list: Trace info of the modified line.
     """
-    trace = []
-    trace.append(af_code.remove_location_info(diff[0]))
-    trace.append(af_path[2].coord.line)
-    trace.append(af_path[0].split("-", 1)[1])
+    trace = [
+        af_code.remove_location_info(diff[0]),
+        af_path[2].coord.line,
+        af_path[0].split("-", 1)[1]
+    ]
     return trace
 
 
 def label_M_4(af_path, list1_b, list1_a, diff, num, bf_paths):
     """
-    Trace data dependencies before and after a modified line (label M.4) in the 'a' file.
+    Trace modified code lines with backward and forward data flow.
+
+    Parameters:
+        af_path (list): Path info for modified code.
+        list1_b (list): Lines from code B.
+        list1_a (list): Lines from code A.
+        diff (list): Diff lines.
+        num (int): Index of current diff block.
+        bf_paths (list): Paths for code B.
 
     Returns:
-        list: A list of traced lines including dependencies and the original line.
+        list: List of traces showing impacted lines.
     """
     front = []
     back = []
     traces = []
+
     for path in af_path[4:]:
         codes = []
         flag = None
@@ -477,28 +503,32 @@ def label_M_4(af_path, list1_b, list1_a, diff, num, bf_paths):
     back = remove_duplicates(back)
 
     for f in front:
-        trace = []
         if f is None:
             continue
-        trace.append(af_code.remove_location_info(diff[0]))
-        trace.append(f[0])
-        trace.append(f[1])
+        trace = [
+            af_code.remove_location_info(diff[0]),
+            f[0],
+            f[1]
+        ]
         traces.append(trace)
 
     for b in back:
-        trace = []
         if b is None:
             continue
-        trace.append(af_code.remove_location_info(diff[0]))
-        trace.append(b[0])
-        trace.append(b[1])
+        trace = [
+            af_code.remove_location_info(diff[0]),
+            b[0],
+            b[1]
+        ]
         traces.append(trace)
 
     traces = remove_duplicates(traces)
-    trace = []
-    trace.append(af_code.remove_location_info(diff[0]))
-    trace.append(af_path[2].coord.line)
-    trace.append(af_path[0].split("-", 1)[1])
+
+    trace = [
+        af_code.remove_location_info(diff[0]),
+        af_path[2].coord.line,
+        af_path[0].split("-", 1)[1]
+    ]
     traces.append(trace)
 
     return traces
@@ -506,15 +536,27 @@ def label_M_4(af_path, list1_b, list1_a, diff, num, bf_paths):
 
 def label_M_5(bf_path, list1_b, list1_a, diff, num, bf_paths):
     """
-    Trace the control dependencies for added code (label M.5).
+    Trace control dependencies before and after M.5 modified code lines.
+
+    Rules:
+    - If both front and back are additions (including empty back node), discard.
+    - If one side is addition, record the other side.
+
+    Parameters:
+        bf_path (list): Path info for modified code.
+        list1_b (list): Lines from code B.
+        list1_a (list): Lines from code A.
+        diff (list): Diff lines.
+        num (int): Index of current diff block.
+        bf_paths (list): Paths for code B.
 
     Returns:
-        list: A list of related context lines before or after the change.
+        list: List of traces showing control dependencies.
     """
     traces = []
-
     front_loc, back_loc = select_path.front_and_back_node(bf_path)
-    if front_loc != []:
+
+    if front_loc:
         for front in front_loc:
             trace = []
             front_code = select_path.get_line_from_code(list1_b[num].splitlines(), front)
@@ -523,14 +565,17 @@ def label_M_5(bf_path, list1_b, list1_a, diff, num, bf_paths):
                 if front_code in line and line.startswith("+"):
                     flag = True
             if not flag:
-                front_mapped = b_to_a(front, list1_b[num].splitlines(), list1_a[num].splitlines(), bf_paths, diff)
-                if front_mapped is None:
+                front = b_to_a(front, list1_b[num].splitlines(), list1_a[num].splitlines(), bf_paths, diff)
+                if front is None:
                     continue
-                trace.append(af_code.remove_location_info(diff[0]))
-                trace.append(front_mapped)
-                trace.append(front_code)
+                trace = [
+                    af_code.remove_location_info(diff[0]),
+                    front,
+                    front_code
+                ]
                 traces.append(trace)
-    if back_loc != []:
+
+    if back_loc:
         for back in back_loc:
             trace = []
             back_code = select_path.get_line_from_code(list1_b[num].splitlines(), back)
@@ -539,31 +584,98 @@ def label_M_5(bf_path, list1_b, list1_a, diff, num, bf_paths):
                 if back_code in line:
                     flag = True
             if not flag:
-                back_mapped = b_to_a(back, list1_b[num].splitlines(), list1_a[num].splitlines(), bf_paths, diff)
-                if back_mapped is None:
+                back = b_to_a(back, list1_b[num].splitlines(), list1_a[num].splitlines(), bf_paths, diff)
+                if back is None:
                     continue
-                trace.append(af_code.remove_location_info(diff[0]))
-                trace.append(back_mapped)
-                trace.append(back_code)
+                trace = [
+                    af_code.remove_location_info(diff[0]),
+                    back,
+                    back_code
+                ]
                 traces.append(trace)
 
     return traces
 
-# ====================== Program Entry ======================
 
 def main(CVE_id):
     """
-    Main function that processes a CVE patch to identify and trace vulnerability-introducing changes.
+    Main function to trace vulnerability based on CVE id.
 
-    Args:
-        CVE_id (str): CVE identifier.
+    Parameters:
+        CVE_id (str): CVE identifier string.
 
     Returns:
-        list: All trace links for the given CVE patch.
+        list: All vulnerability traces found.
     """
+    # Get patched code blocks from A and B versions
     list1_a, count_a = af_code.main(CVE_id)
     list1_b, count_b = bf_code.main(CVE_id)
 
+    # Filtered patch content
     list2 = filter.main(CVE_id)
 
+    # Get control flow paths from A and B
     af_paths, count_a = af_cfg.main(CVE_id)
+    bf_paths, count_b = bf_cfg.main(CVE_id)
+
+    # Get AST storage and graphs
+    storage_a, Gs_a, count_a = af_ast.main(CVE_id)
+    storage_b, Gs_b, count_b = bf_ast.main(CVE_id)
+
+    del_and_add_path = select_path.main(CVE_id)
+    all_vuln_link = []
+
+    for i in range(len(list2)):
+        vuln_link = []
+
+        # Process deleted code lines
+        for af_path in del_and_add_path[i][0]:
+            if af_path[1] == "D":
+                trace_line = label_D(af_path, list2[i])
+                if trace_line is not None:
+                    vuln_link.append(trace_line)
+
+            if af_path[1] in ("M.1", "M.2", "M.3", "M.5"):
+                trace_line = label_M_1(af_path, list2[i])
+                vuln_link.append(trace_line)
+
+            if af_path[1] == "M.4":
+                func_name = select_path.find_func_name(list2[i])
+                num = select_path.find_code_in_list1(list1_a, func_name)
+                traces = label_M_4(af_path, list1_b, list1_a, list2[i], num, del_and_add_path[i][1])
+                for trace in traces:
+                    if trace[1] is not None:
+                        vuln_link.append(trace)
+
+        # Process added code lines
+        for bf_path in del_and_add_path[i][1]:
+            if bf_path[1] == "A":
+                func_name = select_path.find_func_name(list2[i])
+                num = select_path.find_code_in_list1(list1_a, func_name)
+                traces = label_A(bf_path, list1_b, list1_a, list2[i], num, del_and_add_path[i][1])
+                for trace in traces:
+                    if trace[1] is not None:
+                        vuln_link.append(trace)
+
+            if bf_path[1] == "M.5":
+                func_name = select_path.find_func_name(list2[i])
+                num = select_path.find_code_in_list1(list1_a, func_name)
+                traces = label_M_5(bf_path, list1_b, list1_a, list2[i], num, del_and_add_path[i][1])
+                for trace in traces:
+                    if trace[1] is not None:
+                        vuln_link.append(trace)
+
+        vuln_link = remove_duplicates(vuln_link)
+        for link in vuln_link:
+            print(link)
+        all_vuln_link.append(vuln_link)
+
+    return all_vuln_link
+
+# ==============================
+# Main Entry Point
+# ==============================
+
+if __name__ == "__main__":
+    CVE_id = "CVE-2023-6176"
+    main(CVE_id)
