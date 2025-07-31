@@ -1,0 +1,8 @@
+https://nvd.nist.gov/vuln/detail/CVE-2023-52916
+https://nvd.nist.gov/vuln/detail/CVE-2023-52915
+https://nvd.nist.gov/vuln/detail/CVE-2024-45008
+https://nvd.nist.gov/vuln/detail/CVE-2024-45007
+https://nvd.nist.gov/vuln/detail/CVE-2024-45006
+https://nvd.nist.gov/vuln/detail/CVE-2024-45005
+https://nvd.nist.gov/vuln/detail/CVE-2024-45004
+https://nvd.nist.gov/vuln/detail/CVE-2023-23006

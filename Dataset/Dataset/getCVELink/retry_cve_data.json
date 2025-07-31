@@ -1,0 +1,655 @@
+[
+  {
+    "cve_id": "CVE-2022-48916",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.12.19",
+        "versionEndExcluding": "5.13",
+        "matchCriteriaId": "8C2A0F7A-34D9-4DE2-893B-3C8AB10FFB6A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.13.4",
+        "versionEndExcluding": "5.14",
+        "matchCriteriaId": "B6D2AA29-7EC0-4F37-94E7-CF564CCEF770"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.14",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "6EB0EE01-99B7-49FA-874A-693CEAAE69D5"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc1:*:*:*:*:*:*",
+        "matchCriteriaId": "7BD5F8D9-54FA-4CB0-B4F0-CB0471FDDB2D"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc2:*:*:*:*:*:*",
+        "matchCriteriaId": "E6E34B23-78B4-4516-9BD8-61B33F4AC49A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc3:*:*:*:*:*:*",
+        "matchCriteriaId": "C030FA3D-03F4-4FB9-9DBF-D08E5CAC51AA"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc4:*:*:*:*:*:*",
+        "matchCriteriaId": "B2D2677C-5389-4AE9-869D-0F881E80D923"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc5:*:*:*:*:*:*",
+        "matchCriteriaId": "EFA3917C-C322-4D92-912D-ECE45B2E7416"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc6:*:*:*:*:*:*",
+        "matchCriteriaId": "BED18363-5ABC-4639-8BBA-68E771E5BB3F"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48915",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.9",
+        "versionEndExcluding": "5.10.104",
+        "matchCriteriaId": "A3C09401-A1DB-46D7-AC56-3179A3FA83C1"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.11",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "B3A8E092-3021-4A34-8DCE-B89D2238818B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48914",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.19.226",
+        "versionEndExcluding": "4.19.233",
+        "matchCriteriaId": "844F8286-579D-45F3-91F9-B0963A45C46A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.4.174",
+        "versionEndExcluding": "5.4.183",
+        "matchCriteriaId": "50DC6A9D-EDB7-4237-9253-6A36CB2A79E7"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.10.94",
+        "versionEndExcluding": "5.10.104",
+        "matchCriteriaId": "07144469-6081-4ABC-AD38-F23A8D9B3E86"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.15.17",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "A3C6A607-7094-4C3C-B703-C6B5A1F87670"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16.3",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "CA1CE57C-E9AE-4BFC-8E39-AECD1A63C9A0"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48913",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.12",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "0124F44D-3165-4025-A6AD-1C47145E6B2A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48912",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.14",
+        "versionEndExcluding": "4.14.270",
+        "matchCriteriaId": "64D82A2D-7E3F-4739-BADB-F611732BE6C2"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.15",
+        "versionEndExcluding": "4.19.233",
+        "matchCriteriaId": "B59A7E33-6262-458E-AC76-E8CC4E812344"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.20",
+        "versionEndExcluding": "5.4.183",
+        "matchCriteriaId": "76A7616E-E6B9-4A7F-AA7C-1D47F774215F"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.5",
+        "versionEndExcluding": "5.10.104",
+        "matchCriteriaId": "764998FC-D1F7-4BAA-BD56-A553C7AB8F08"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.11",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "B3A8E092-3021-4A34-8DCE-B89D2238818B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48911",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "2.6.29",
+        "versionEndExcluding": "4.9.305",
+        "matchCriteriaId": "C3F18B92-FE18-47E9-A7F2-16F95AB41486"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.10",
+        "versionEndExcluding": "4.14.270",
+        "matchCriteriaId": "51C0B6F2-A904-4FE6-B06B-CE26226B22B7"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.15",
+        "versionEndExcluding": "4.19.233",
+        "matchCriteriaId": "B59A7E33-6262-458E-AC76-E8CC4E812344"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.20",
+        "versionEndExcluding": "5.4.183",
+        "matchCriteriaId": "76A7616E-E6B9-4A7F-AA7C-1D47F774215F"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.5",
+        "versionEndExcluding": "5.10.104",
+        "matchCriteriaId": "764998FC-D1F7-4BAA-BD56-A553C7AB8F08"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.11",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "B3A8E092-3021-4A34-8DCE-B89D2238818B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc1:*:*:*:*:*:*",
+        "matchCriteriaId": "7BD5F8D9-54FA-4CB0-B4F0-CB0471FDDB2D"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc2:*:*:*:*:*:*",
+        "matchCriteriaId": "E6E34B23-78B4-4516-9BD8-61B33F4AC49A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc3:*:*:*:*:*:*",
+        "matchCriteriaId": "C030FA3D-03F4-4FB9-9DBF-D08E5CAC51AA"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc4:*:*:*:*:*:*",
+        "matchCriteriaId": "B2D2677C-5389-4AE9-869D-0F881E80D923"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc5:*:*:*:*:*:*",
+        "matchCriteriaId": "EFA3917C-C322-4D92-912D-ECE45B2E7416"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc6:*:*:*:*:*:*",
+        "matchCriteriaId": "BED18363-5ABC-4639-8BBA-68E771E5BB3F"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48910",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "3.18",
+        "versionEndExcluding": "4.9.313",
+        "matchCriteriaId": "927E10B9-07A2-4D21-B518-62246BE28995"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.10",
+        "versionEndExcluding": "4.14.278",
+        "matchCriteriaId": "050329AA-B7D6-45EA-9341-E396DC054423"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.15",
+        "versionEndExcluding": "5.4.193",
+        "matchCriteriaId": "A014E697-B30F-4699-8F9E-0FB4E2BB359C"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.5",
+        "versionEndExcluding": "5.10.104",
+        "matchCriteriaId": "764998FC-D1F7-4BAA-BD56-A553C7AB8F08"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.11",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "B3A8E092-3021-4A34-8DCE-B89D2238818B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc1:*:*:*:*:*:*",
+        "matchCriteriaId": "7BD5F8D9-54FA-4CB0-B4F0-CB0471FDDB2D"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc2:*:*:*:*:*:*",
+        "matchCriteriaId": "E6E34B23-78B4-4516-9BD8-61B33F4AC49A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc3:*:*:*:*:*:*",
+        "matchCriteriaId": "C030FA3D-03F4-4FB9-9DBF-D08E5CAC51AA"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc4:*:*:*:*:*:*",
+        "matchCriteriaId": "B2D2677C-5389-4AE9-869D-0F881E80D923"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc5:*:*:*:*:*:*",
+        "matchCriteriaId": "EFA3917C-C322-4D92-912D-ECE45B2E7416"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc6:*:*:*:*:*:*",
+        "matchCriteriaId": "BED18363-5ABC-4639-8BBA-68E771E5BB3F"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48909",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.3",
+        "versionEndExcluding": "5.10.104",
+        "matchCriteriaId": "C340B44A-7A5B-4A6D-AB90-C8B64B25908B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.11",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "B3A8E092-3021-4A34-8DCE-B89D2238818B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc1:*:*:*:*:*:*",
+        "matchCriteriaId": "7BD5F8D9-54FA-4CB0-B4F0-CB0471FDDB2D"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc2:*:*:*:*:*:*",
+        "matchCriteriaId": "E6E34B23-78B4-4516-9BD8-61B33F4AC49A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc3:*:*:*:*:*:*",
+        "matchCriteriaId": "C030FA3D-03F4-4FB9-9DBF-D08E5CAC51AA"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc4:*:*:*:*:*:*",
+        "matchCriteriaId": "B2D2677C-5389-4AE9-869D-0F881E80D923"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc5:*:*:*:*:*:*",
+        "matchCriteriaId": "EFA3917C-C322-4D92-912D-ECE45B2E7416"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc6:*:*:*:*:*:*",
+        "matchCriteriaId": "BED18363-5ABC-4639-8BBA-68E771E5BB3F"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48908",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "3.18",
+        "versionEndExcluding": "4.9.305",
+        "matchCriteriaId": "FD5759B6-D0C9-44AA-A127-E183C95F00A4"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.10",
+        "versionEndExcluding": "4.14.270",
+        "matchCriteriaId": "51C0B6F2-A904-4FE6-B06B-CE26226B22B7"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.15",
+        "versionEndExcluding": "4.19.233",
+        "matchCriteriaId": "B59A7E33-6262-458E-AC76-E8CC4E812344"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "4.20",
+        "versionEndExcluding": "5.4.183",
+        "matchCriteriaId": "76A7616E-E6B9-4A7F-AA7C-1D47F774215F"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.5",
+        "versionEndExcluding": "5.10.104",
+        "matchCriteriaId": "764998FC-D1F7-4BAA-BD56-A553C7AB8F08"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.11",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "B3A8E092-3021-4A34-8DCE-B89D2238818B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc1:*:*:*:*:*:*",
+        "matchCriteriaId": "7BD5F8D9-54FA-4CB0-B4F0-CB0471FDDB2D"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc2:*:*:*:*:*:*",
+        "matchCriteriaId": "E6E34B23-78B4-4516-9BD8-61B33F4AC49A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc3:*:*:*:*:*:*",
+        "matchCriteriaId": "C030FA3D-03F4-4FB9-9DBF-D08E5CAC51AA"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc4:*:*:*:*:*:*",
+        "matchCriteriaId": "B2D2677C-5389-4AE9-869D-0F881E80D923"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc5:*:*:*:*:*:*",
+        "matchCriteriaId": "EFA3917C-C322-4D92-912D-ECE45B2E7416"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc6:*:*:*:*:*:*",
+        "matchCriteriaId": "BED18363-5ABC-4639-8BBA-68E771E5BB3F"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48907",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.11",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "B3A8E092-3021-4A34-8DCE-B89D2238818B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc1:*:*:*:*:*:*",
+        "matchCriteriaId": "7BD5F8D9-54FA-4CB0-B4F0-CB0471FDDB2D"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc2:*:*:*:*:*:*",
+        "matchCriteriaId": "E6E34B23-78B4-4516-9BD8-61B33F4AC49A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc3:*:*:*:*:*:*",
+        "matchCriteriaId": "C030FA3D-03F4-4FB9-9DBF-D08E5CAC51AA"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc4:*:*:*:*:*:*",
+        "matchCriteriaId": "B2D2677C-5389-4AE9-869D-0F881E80D923"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc5:*:*:*:*:*:*",
+        "matchCriteriaId": "EFA3917C-C322-4D92-912D-ECE45B2E7416"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc6:*:*:*:*:*:*",
+        "matchCriteriaId": "BED18363-5ABC-4639-8BBA-68E771E5BB3F"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48906",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.12.4",
+        "versionEndExcluding": "5.13",
+        "matchCriteriaId": "962DCAA0-5F0D-4E2B-9CC7-53800AB2E504"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.13",
+        "versionEndExcluding": "5.15.27",
+        "matchCriteriaId": "30FF1CEF-6370-4679-8AB5-D39C2D09A3D3"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionStartIncluding": "5.16",
+        "versionEndExcluding": "5.16.13",
+        "matchCriteriaId": "B871B667-EDC0-435D-909E-E918D8D90995"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc1:*:*:*:*:*:*",
+        "matchCriteriaId": "7BD5F8D9-54FA-4CB0-B4F0-CB0471FDDB2D"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc2:*:*:*:*:*:*",
+        "matchCriteriaId": "E6E34B23-78B4-4516-9BD8-61B33F4AC49A"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc3:*:*:*:*:*:*",
+        "matchCriteriaId": "C030FA3D-03F4-4FB9-9DBF-D08E5CAC51AA"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc4:*:*:*:*:*:*",
+        "matchCriteriaId": "B2D2677C-5389-4AE9-869D-0F881E80D923"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc5:*:*:*:*:*:*",
+        "matchCriteriaId": "EFA3917C-C322-4D92-912D-ECE45B2E7416"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:5.17:rc6:*:*:*:*:*:*",
+        "matchCriteriaId": "BED18363-5ABC-4639-8BBA-68E771E5BB3F"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2022-48703",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionEndExcluding": "5.19.9",
+        "matchCriteriaId": "A99BA199-0BFA-4BF0-A0C7-3EBC72400E1B"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:6.0:rc1:*:*:*:*:*:*",
+        "matchCriteriaId": "E8BD11A3-8643-49B6-BADE-5029A0117325"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:6.0:rc2:*:*:*:*:*:*",
+        "matchCriteriaId": "5F0AD220-F6A9-4012-8636-155F1B841FAD"
+      }
+    ]
+  },
+  {
+    "cve_id": "CVE-2018-1066",
+    "cpeMatches": [
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:linux:linux_kernel:*:*:*:*:*:*:*:*",
+        "versionEndIncluding": "4.10.15",
+        "matchCriteriaId": "3E45C2CA-27DC-4E06-A7E3-DF1F9235CA06"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:debian:debian_linux:8.0:*:*:*:*:*:*:*",
+        "matchCriteriaId": "C11E6FB0-C8C0-4527-9AA0-CB9B316F8F43"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:debian:debian_linux:9.0:*:*:*:*:*:*:*",
+        "matchCriteriaId": "DEECE5FC-CACF-4496-A3E7-164736409252"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:canonical:ubuntu_linux:12.04:*:*:*:esm:*:*:*",
+        "matchCriteriaId": "8D305F7A-D159-4716-AB26-5E38BB5CD991"
+      },
+      {
+        "vulnerable": true,
+        "criteria": "cpe:2.3:o:canonical:ubuntu_linux:14.04:*:*:*:lts:*:*:*",
+        "matchCriteriaId": "B5A6F2F3-4894-4392-8296-3B8DD2679084"
+      }
+    ]
+  }
+]
