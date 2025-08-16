@@ -68,7 +68,6 @@ import requests
 from lxml import etree
 import af_code
 import filter
-import load_file
 import re_refactor
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -114,4 +113,3 @@ from pathlib import Path
 import patch_label
 import filter
 import af_code
-import load_file

@@ -8,7 +8,7 @@ import patch_label
 import filter
 import af_code
 import re
-import load_file
+#import load_file
 
 # List of common C/C++ type keywords for matching function declarations
 types = [

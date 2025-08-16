@@ -4,6 +4,13 @@
 
 Vuln-Intro is a toolkit designed for localizing the commit where a vulnerability was introduced. It analyzes CVE (Common Vulnerabilities and Exposures) patches to trace back to the specific commit that originally introduced the vulnerability. The toolkit includes a complete pipeline of data collection, static analysis, and vulnerability identification.
 
+## Attention
+1. The main script can be executed directly using match.py.
+
+2. Copy the CVE files from the example directory to your working directory to use them, following the example of the cve-2023-6176 file.
+
+3. Each specific functionality can be tested by running its corresponding script to examine the output results.
+
 ## Project Structure
 
 ```
@@ -51,15 +58,12 @@ Vuln-Intro-main/
 #### Data_Crawling/ Module
 - **Purpose**: Automatically download patch information and related source code files
 - **Main Files**:
-  - `load_file.py`: Automatically downloads patch information and related source code files for the specified CVE
   - `patch_list.py`: Downloads the list of historical commit URLs related to the target patch
   - `re_refactor.py`: Filters out types of refactorings that do not affect the vulnerability
   - `filter.py`: Filters out noisy statements from the patch data
 
 **Usage**:
 ```bash
-# Download CVE patch information
-python load_file.py CVE-2023-6111
 
 # Generate patch list
 python patch_list.py CVE-2023-6111
@@ -161,7 +165,6 @@ pip install requests lxml networkx pycparser
 ### 1. Data Crawling
 ```bash
 cd Vuln-Intro/Data_Crawling
-python load_file.py <CVE-ID>
 python patch_list.py <CVE-ID>
 python filter.py <CVE-ID>
 ```
