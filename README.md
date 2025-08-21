@@ -1,7 +1,7 @@
 # Vuln-Intro: Accurate Identification of the Vulnerability-introducing Commit based on Differential Analysis of Patching Patterns
 
 ## Project Overview
-
+This repository contains the code used to run experiments for the paper: "Accurate Identification of the Vulnerability-introducing Commit based on Differential Analysis of Patching Patterns".
 Vuln-Intro is a toolkit designed for localizing the commit where a vulnerability was introduced. It analyzes CVE (Common Vulnerabilities and Exposures) patches to trace back to the specific commit that originally introduced the vulnerability. The toolkit includes a complete pipeline of data collection, static analysis, and vulnerability identification.
 
 ## Attention
@@ -225,3 +225,4 @@ Each example contains complete experimental data and results, which can be used 
 ## License
 
 This project follows the corresponding open-source license. Please check the license file in the project root directory for details.
+
