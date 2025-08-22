@@ -19,17 +19,18 @@ This directory contains scripts for vulnerability identification and matching.
 
 ```bash
 # Match historical commits
-python match.py CVE-2023-6111
+python match.p
 
 # Generate patch labels
-python patch_label.py CVE-2023-6111
+python patch_label.py
 
 # Track function renaming
-python rename_lower_version.py CVE-2023-6111
+python rename_lower_version.py 
 
 # Select path
 python select_path.py
 
 # Trace historical commits
-python traver.py CVE-2023-6111
+python traver.py 
+
 ```
