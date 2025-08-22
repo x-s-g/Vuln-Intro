@@ -1,4 +1,4 @@
-import load_file
+#import load_file
 import requests
 from lxml import etree
 
