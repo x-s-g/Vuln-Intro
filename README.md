@@ -64,14 +64,11 @@ Vuln-Intro-main/
 **Usage**:
 ```bash
 
-# Generate patch list
-python patch_list.py CVE-2023-6111
-
 # Filter refactorings
-python re_refactor.py CVE-2023-6111
+python re_refactor.py 
 
 # Filter noise
-python filter.py CVE-2023-6111
+python filter.py 
 ```
 
 #### Identification/ Module
@@ -86,19 +83,19 @@ python filter.py CVE-2023-6111
 **Usage**:
 ```bash
 # Match historical commits
-python match.py CVE-2023-6111
+python match.py 
 
 # Generate patch labels
-python patch_label.py CVE-2023-6111
+python patch_label.py
 
 # Track function renaming
-python rename_lower_version.py CVE-2023-6111
+python rename_lower_version.py
 
 # Select path
 python select_path.py
 
 # Track historical commits
-python traver.py CVE-2023-6111
+python traver.py
 ```
 
 #### Static_Analysis/ Module
@@ -116,22 +113,22 @@ python traver.py CVE-2023-6111
 **Usage**:
 ```bash
 # Construct AST before patch
-python af_ast.py CVE-2023-6111
+python af_ast.py
 
 # Construct CFG before patch
-python af_cfg.py CVE-2023-6111
+python af_cfg.py
 
 # Extract code before patch
-python af_code.py CVE-2023-6111
+python af_code.py
 
 # Construct AST after patch
-python bf_ast.py CVE-2023-6111
+python bf_ast.py
 
 # Construct CFG after patch
-python bf_cfg.py CVE-2023-6111
+python bf_cfg.py
 
 # Extract code after patch
-python bf_code.py CVE-2023-6111
+python bf_code.py
 ```
 
 ## Dependency Requirements
@@ -171,20 +168,20 @@ python filter.py <CVE-ID>
 ### 2. Static Analysis
 ```bash
 cd ../Static_Analysis
-python af_code.py <CVE-ID>
-python af_ast.py <CVE-ID>
-python af_cfg.py <CVE-ID>
-python bf_code.py <CVE-ID>
-python bf_ast.py <CVE-ID>
-python bf_cfg.py <CVE-ID>
+python af_code.py
+python af_ast.py 
+python af_cfg.py 
+python bf_code.py 
+python bf_ast.py 
+python bf_cfg.py
 ```
 
 ### 3. Vulnerability Identification
 ```bash
 cd ../Identification
-python patch_label.py <CVE-ID>
+python patch_label.py 
 python select_path.py
-python match.py <CVE-ID>
+python match.py 
 ```
 
 ## Examples
@@ -224,5 +221,6 @@ Each example contains complete experimental data and results, which can be used 
 ## License
 
 This project follows the corresponding open-source license. Please check the license file in the project root directory for details.
+
 
 
