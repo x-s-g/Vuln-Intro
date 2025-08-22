@@ -16,13 +16,12 @@ This directory contains scripts for automatically downloading patch information 
 
 ```bash
 
-# Generate patch list
-python patch_list.py CVE-2023-6111
 
 # Filter refactorings
-python re_refactor.py CVE-1/CVE-2023-45863/patch.txt
+python re_refactor.py 
 
 # Filter noise
-python filter.py CVE-2023-6111
+python filter.py 
 
 ```
+
