@@ -4,19 +4,13 @@ import networkx as nx
 
 
 class ASTStorage:
-    """
-    Class to store and manage multiple ASTs parsed from C code snippets.
-    """
-
     def __init__(self):
-        self.asts = []  # List to store ASTs
+        self.asts = []  # 用于存储 AST 的列表
 
     def add_ast(self, code):
         """
-        Parse C code into an AST and add it to storage.
-
-        Args:
-            code (str): C code string to parse.
+        将 C 代码解析为 AST 并添加到列表中
+        :param code: C 代码字符串
         """
         parser = c_parser.CParser()
         ast = parser.parse(code)
@@ -24,16 +18,9 @@ class ASTStorage:
 
     def get_ast(self, index):
         """
-        Retrieve the AST at the specified index.
-
-        Args:
-            index (int): Index of the AST to retrieve.
-
-        Returns:
-            c_ast.Node: Parsed AST node.
-
-        Raises:
-            IndexError: If index is out of range.
+        获取指定索引的 AST
+        :param index: AST 的索引
+        :return: AST 节点
         """
         if 0 <= index < len(self.asts):
             return self.asts[index]
@@ -42,114 +29,118 @@ class ASTStorage:
 
     def show_ast(self, index):
         """
-        Print the AST at the specified index with details.
-
-        Args:
-            index (int): Index of the AST to display.
+        打印指定索引的 AST
+        :param index: AST 的索引
         """
         ast = self.get_ast(index)
         ast.show(attrnames=True, nodenames=True, showcoord=True)
 
     def list_asts(self):
         """
-        List summary of all stored ASTs.
+        列出所有存储的 AST 的简要信息
         """
         for i, ast in enumerate(self.asts):
             print(f"AST {i}:")
             ast.show(attrnames=True, nodenames=True, showcoord=True, max_depth=1)
             print()
 
-
 def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None, pending_gotos=None):
-    """
-    Recursively build a control flow graph (CFG) from the given AST node.
-
-    Args:
-        node (c_ast.Node or list): Current AST node or list of nodes.
-        G (networkx.DiGraph): Directed graph to build.
-        prev_node (c_ast.Node, optional): Previous node in CFG.
-        label_dict (dict, optional): Mapping from label names to nodes.
-        pending_gotos (list, optional): List of unresolved goto nodes.
-    """
     if label_dict is None:
         label_dict = {}
     if pending_gotos is None:
         pending_gotos = []
 
     if isinstance(node, c_ast.Compound):
+        nodetype = 'Compound'
         prev_child_node = None
-        if node.block_items:
+        if node.block_items:  # 检查 block_items 是否为 None
             for child in node.block_items:
                 if prev_child_node is not None:
                     G.add_edge(prev_child_node, child)
-                    build_control_flow_graph_recursive(child, G, prev_child_node, label_dict, pending_gotos)
+                    build_control_flow_graph_recursive(child, G, prev_child_node,label_dict, pending_gotos)
                     prev_child_node = child
-                else:
+                if prev_child_node is None:
                     G.add_edge(node, child)
                     build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
-                    prev_child_node = child
+                    prev_child_node=child
 
     elif isinstance(node, c_ast.For):
-        if node.init:
+        nodetype = 'For Loop'
+        if node.init:  # 检查 init 是否为 None
             for child in node.init:
                 build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
-        G.add_edge(node, node.stmt)
+        # build_control_flow_graph_recursive(node.cond, G, node, label_dict, pending_gotos)
+        G.add_edge(node,node.stmt)
         build_control_flow_graph_recursive(node.stmt, G, node, label_dict, pending_gotos)
-        if node.next:
+        if node.next:  # 检查 next 是否为 None
             for child in node.next:
                 build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
 
     elif isinstance(node, c_ast.While):
-        G.add_edge(node, node.stmt)
+        nodetype = 'While Loop'
+        # build_control_flow_graph_recursive(node.cond, G, prev_node, label_dict, pending_gotos)
+        G.add_edge(node,node.stmt)
         build_control_flow_graph_recursive(node.stmt, G, node, label_dict, pending_gotos)
 
     elif isinstance(node, c_ast.DoWhile):
+        nodetype = 'Do While Loop'
         G.add_edge(node, node.stmt)
         build_control_flow_graph_recursive(node.stmt, G, node, label_dict, pending_gotos)
+        #build_control_flow_graph_recursive(node.cond, G, node, label_dict, pending_gotos)
 
     elif isinstance(node, c_ast.Switch):
+        nodetype = 'Switch Statement'
         build_control_flow_graph_recursive(node.cond, G, prev_node, label_dict, pending_gotos)
         for child in node.stmt.block_items:
             G.add_edge(node, child)
             build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
 
     elif isinstance(node, c_ast.Case):
+        nodetype = 'Case Statement'
         prev_child_node = None
-        if node.stmts:
+        if node.stmts:  # 检查 stmts 是否为 None
             for child in node.stmts:
                 if prev_child_node is not None:
                     G.add_edge(prev_child_node, child)
-                    build_control_flow_graph_recursive(child, G, prev_child_node, label_dict, pending_gotos)
+                    build_control_flow_graph_recursive(child, G, prev_child_node,label_dict, pending_gotos)
                     prev_child_node = child
-                else:
+                if prev_child_node is None:
                     G.add_edge(node, child)
                     build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
                     prev_child_node = child
 
     elif isinstance(node, c_ast.Default):
+        nodetype = 'Default Statement'
         prev_child_node = None
-        if node.stmts:
+        if node.stmts:  # 检查 stmts 是否为 None
             for child in node.stmts:
                 if prev_child_node is not None:
                     G.add_edge(prev_child_node, child)
-                    build_control_flow_graph_recursive(child, G, prev_child_node, label_dict, pending_gotos)
+                    build_control_flow_graph_recursive(child, G, prev_child_node)
                     prev_child_node = child
-                else:
+                if prev_child_node is None:
                     G.add_edge(node, child)
                     build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
                     prev_child_node = child
 
     elif isinstance(node, c_ast.If):
+        nodetype = 'If Statement'
+        # 处理条件部分
+        # cond_node = node.cond
+        # G.add_edge(node, cond_node)
+        # build_control_flow_graph_recursive(node.cond, G, node, label_dict, pending_gotos)
+
+        # 处理 iftrue 分支
         if node.iftrue:
             if_true_node = node.iftrue
-            if isinstance(if_true_node, c_ast.Compound):
-                prev_child_node = None
+            if isinstance(if_true_node,c_ast.Compound):
+                prev_child_node=None
                 for child in if_true_node.block_items:
                     if prev_child_node is not None:
                         G.add_edge(prev_child_node, child)
-                        build_control_flow_graph_recursive(child, G, prev_child_node, label_dict, pending_gotos)
+                        build_control_flow_graph_recursive(child, G, prev_child_node,label_dict, pending_gotos)
                         prev_child_node = child
-                    else:
+                    if prev_child_node is None:
                         G.add_edge(node, child)
                         build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
                         prev_child_node = child
@@ -157,16 +148,17 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
                 G.add_edge(node, if_true_node)
                 build_control_flow_graph_recursive(node.iftrue, G, node, label_dict, pending_gotos)
 
+        # 处理 iffalse 分支
         if node.iffalse:
             if_false_node = node.iffalse
-            if isinstance(if_false_node, c_ast.Compound):
-                prev_child_node = None
+            if isinstance(if_false_node,c_ast.Compound):
+                prev_child_node=None
                 for child in if_false_node.block_items:
                     if prev_child_node is not None:
                         G.add_edge(prev_child_node, child)
-                        build_control_flow_graph_recursive(child, G, prev_child_node, label_dict, pending_gotos)
+                        build_control_flow_graph_recursive(child, G, prev_child_node,label_dict, pending_gotos)
                         prev_child_node = child
-                    else:
+                    if prev_child_node is None:
                         G.add_edge(node, child)
                         build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
                         prev_child_node = child
@@ -175,16 +167,79 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
                 build_control_flow_graph_recursive(node.iffalse, G, node, label_dict, pending_gotos)
 
     elif isinstance(node, c_ast.FuncDef):
-        G.add_edge(node, node.body)
+        nodetype = 'Function Definition'
+        G.add_edge(node,node.body)
         build_control_flow_graph_recursive(node.body, G, node, label_dict, pending_gotos)
 
+    elif isinstance(node, c_ast.FuncDecl):
+        nodetype = 'Function Declaration'
+
+    elif isinstance(node, c_ast.Continue):
+        nodetype = 'Continue Statement'
+
+    elif isinstance(node, c_ast.Return):
+        nodetype = 'Return Statement'
+
+    elif isinstance(node, c_ast.Decl):
+        nodetype = 'Declaration'
+        # if node.init:
+        #     build_control_flow_graph_recursive(node.init, G, node, label_dict, pending_gotos)
+    elif isinstance(node, c_ast.Assignment):
+        nodetype = 'Assignment'
+        # build_control_flow_graph_recursive(node.rvalue, G, prev_node, label_dict, pending_gotos)
+    elif isinstance(node, c_ast.ArrayDecl):
+        nodetype = 'Array Declaration'
+    elif isinstance(node, c_ast.ArrayRef):
+        nodetype = 'Array Reference'
+        # build_control_flow_graph_recursive(node.name, G, prev_node, label_dict, pending_gotos)
+        # build_control_flow_graph_recursive(node.subscript, G, prev_node, label_dict, pending_gotos)
+    elif isinstance(node, c_ast.ExprList):
+        nodetype = 'Expression List'
+    elif isinstance(node, c_ast.FuncCall):
+        nodetype = 'Function Call'
+        # build_control_flow_graph_recursive(node.args, G, prev_node, label_dict, pending_gotos)
+    elif isinstance(node, c_ast.Constant):
+        nodetype = 'Constant'
+    elif isinstance(node, c_ast.Break):
+        nodetype = 'Break Statement'
+    elif isinstance(node, c_ast.StructRef):
+        nodetype = 'Struct Reference'
+        # build_control_flow_graph_recursive(node.name, G, prev_node, label_dict, pending_gotos)
+        # build_control_flow_graph_recursive(node.field, G, prev_node, label_dict, pending_gotos)
+    elif isinstance(node, c_ast.Continue):
+        nodetype = 'Continue Statement'
+    elif isinstance(node, c_ast.Goto):
+        nodetype = 'Goto'
+        # label_name = node.name
+        #
+        # if label_name in label_dict:
+        #     target_node = label_dict[label_name]
+        #     G.add_edge(node, target_node)
+        # else:
+        #     # 记录未解析的goto语句
+        #     pending_gotos.append((node, label_name))
+
     elif isinstance(node, c_ast.Label):
-        label_dict[node.name] = node
+        nodetype = 'Label'
+        label_name = node.name
+        label_dict[label_name] = node
+        #print(label_name)
+
+        # 处理未解析的goto语句
+        # for goto_node, goto_label in list(pending_gotos):
+        #
+        #     if goto_label == label_name:
+        #         # print(goto_label)
+        #         # print(goto_node)
+        #         G.add_edge(goto_node, node)
+        #         pending_gotos.remove((goto_node, goto_label))
+
+        # 处理标签的子节点
         G.add_edge(node, node.stmt)
         build_control_flow_graph_recursive(node.stmt, G, node, label_dict, pending_gotos)
 
-    elif isinstance(node, c_ast.Node):
-        for _, child in node.children():
+    elif isinstance(node, c_ast.Node):  # Handle generic Node types
+        for child_name, child in node.children():
             G.add_edge(node, child)
             build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
 
@@ -192,61 +247,257 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
         for item in node:
             build_control_flow_graph_recursive(item, G, prev_node, label_dict, pending_gotos)
 
-
 def get_node_info(node):
-    """
-    Retrieve the line number of the node if available.
-    """
-    return node.coord.line if hasattr(node, 'coord') and node.coord else 'Unknown'
-
+    if hasattr(node, 'coord') and node.coord:
+        return node.coord.line
+    else:
+        return 'Unknown'
 
 def print_control_flow_graph(G):
-    """
-    Print nodes and edges of the control flow graph with node types and line numbers.
-    """
-    print("Control Flow Graph Nodes:")
+    print("Control Flow Graph:")
     for node in G.nodes():
-        nodetype = type(node).__name__
-        print(f"Node: {nodetype} (Line {get_node_info(node)})")
+        if isinstance(node, c_ast.Compound):
+            nodetype = 'Compound'
+        elif isinstance(node, c_ast.For):
+            nodetype = 'For Loop'
+        elif isinstance(node, c_ast.If):
+            nodetype = 'If Statement'
+        elif isinstance(node, c_ast.While):
+            nodetype = 'While Loop'
+        elif isinstance(node, c_ast.DoWhile):
+            nodetype = 'Do While Loop'
+        elif isinstance(node, c_ast.Switch):
+            nodetype = 'Switch Statement'
+        elif isinstance(node, c_ast.Case):
+            nodetype = 'Case Statement'
+        elif isinstance(node, c_ast.Default):
+            nodetype = 'Default Statement'
+        elif isinstance(node, c_ast.FuncDef):
+            nodetype = 'Function Definition'
+        elif isinstance(node, c_ast.FuncDecl):
+            nodetype = 'Function Declaration'
+        elif isinstance(node, c_ast.Return):
+            nodetype = 'Return Statement'
+        elif isinstance(node, c_ast.Decl):
+            nodetype = 'Declaration'
+        elif isinstance(node, c_ast.ID):
+            nodetype = 'Identifier'
+        elif isinstance(node, c_ast.BinaryOp):
+            nodetype = 'Binary Operation'
+        elif isinstance(node, c_ast.UnaryOp):
+            nodetype = 'Unary Operation'
+        elif isinstance(node, c_ast.Assignment):
+            nodetype = 'Assignment'
+        elif isinstance(node, c_ast.ArrayDecl):
+            nodetype = 'Array Declaration'
+        elif isinstance(node, c_ast.ArrayRef):
+            nodetype = 'Array Reference'
+        elif isinstance(node, c_ast.Struct):
+            nodetype = 'Struct'
+        elif isinstance(node, c_ast.Union):
+            nodetype = 'Union'
+        elif isinstance(node, c_ast.Typedef):
+            nodetype = 'Typedef'
+        elif isinstance(node, c_ast.StructRef):
+            nodetype = 'Struct Reference'
+        elif isinstance(node, c_ast.Continue):
+            nodetype = 'Continue'
+        elif isinstance(node, c_ast.TypeDecl):
+            nodetype = 'Type Declaration'
+        elif isinstance(node, c_ast.PtrDecl):
+            nodetype = 'Pointer Declaration'
+        elif isinstance(node, c_ast.ExprList):
+            nodetype = 'Expression List'
+        elif isinstance(node, c_ast.FuncCall):
+            nodetype = 'Function Call'
+        elif isinstance(node, c_ast.Constant):
+            nodetype = 'Constant'
+        elif isinstance(node, c_ast.Break):
+            nodetype = 'Break Statement'
+        elif isinstance(node, c_ast.Continue):
+            nodetype = 'Continue Statement'
+        elif isinstance(node, c_ast.Goto):
+            nodetype = 'Goto'
+        elif isinstance(node, c_ast.Label):
+            nodetype = 'Label'
+        else:
+            nodetype = 'Unknown'
 
-    print("\nControl Flow Graph Edges:")
-    for src, tgt in G.edges():
-        print(f"{type(src).__name__} (Line {get_node_info(src)}) -> {type(tgt).__name__} (Line {get_node_info(tgt)})")
+        print(f"Node: {nodetype} (Line {get_node_info(node)})")
+        # with open("node.txt","a")as file:
+        #     file.write(f"Node: {nodetype} (Line {get_node_info(node)})\n")
+        # file.close()
+
+    print("\nEdges:")
+    for edge in G.edges():
+        source = edge[0]
+        target = edge[1]
+        source_code = get_node_info(source)
+
+
+        if isinstance(source, c_ast.Compound):
+            source_type = 'Compound'
+        elif isinstance(source, c_ast.For):
+            source_type = 'For Loop'
+        elif isinstance(source, c_ast.If):
+            source_type = 'If Statement'
+        elif isinstance(source, c_ast.While):
+            source_type = 'While Loop'
+        elif isinstance(source, c_ast.DoWhile):
+            source_type = 'Do While Loop'
+        elif isinstance(source, c_ast.Switch):
+            source_type = 'Switch Statement'
+        elif isinstance(source, c_ast.Case):
+            source_type = 'Case Statement'
+        elif isinstance(source, c_ast.Default):
+            source_type = 'Default Statement'
+        elif isinstance(source, c_ast.FuncDef):
+            source_type = 'Function Definition'
+        elif isinstance(source, c_ast.FuncDecl):
+            source_type = 'Function Declaration'
+        elif isinstance(source, c_ast.Return):
+            source_type = 'Return Statement'
+        elif isinstance(source, c_ast.Continue):
+            source_type = 'Continue'
+        elif isinstance(source, c_ast.Decl):
+            source_type = 'Declaration'
+        elif isinstance(source, c_ast.ID):
+            source_type = 'Identifier'
+        elif isinstance(source, c_ast.BinaryOp):
+            source_type = 'Binary Operation'
+        elif isinstance(source, c_ast.UnaryOp):
+            source_type = 'Unary Operation'
+        elif isinstance(source, c_ast.StructRef):
+            source_type = 'Struct Reference'
+        elif isinstance(source, c_ast.Assignment):
+            source_type = 'Assignment'
+        elif isinstance(source, c_ast.ArrayDecl):
+            source_type = 'Array Declaration'
+        elif isinstance(source, c_ast.ArrayRef):
+            source_type = 'Array Reference'
+        elif isinstance(source, c_ast.Struct):
+            source_type = 'Struct'
+        elif isinstance(source, c_ast.Union):
+            source_type = 'Union'
+        elif isinstance(source, c_ast.Typedef):
+            source_type = 'Typedef'
+        elif isinstance(source, c_ast.TypeDecl):
+            source_type = 'Type Declaration'
+        elif isinstance(source, c_ast.PtrDecl):
+            source_type = 'Pointer Declaration'
+        elif isinstance(source, c_ast.ExprList):
+            source_type = 'Expression List'
+        elif isinstance(source, c_ast.FuncCall):
+            source_type = 'Function Call'
+        elif isinstance(source, c_ast.Constant):
+            source_type = 'Constant'
+        elif isinstance(source, c_ast.Break):
+            source_type = 'Break Statement'
+        elif isinstance(source, c_ast.Continue):
+            source_type = 'Continue Statement'
+        elif isinstance(source, c_ast.Goto):
+            source_type = 'Goto'
+        elif isinstance(source, c_ast.Label):
+            source_type = 'Label'
+        else:
+            source_type = 'Unknown'
+
+        target_code = get_node_info(target)
+
+        if isinstance(target, c_ast.Compound):
+            target_type = 'Compound'
+        elif isinstance(target, c_ast.For):
+            target_type = 'For Loop'
+        elif isinstance(target, c_ast.If):
+            target_type = 'If Statement'
+        elif isinstance(target, c_ast.While):
+            target_type = 'While Loop'
+        elif isinstance(target, c_ast.DoWhile):
+            target_type = 'Do While Loop'
+        elif isinstance(target, c_ast.Switch):
+            target_type = 'Switch Statement'
+        elif isinstance(target, c_ast.Case):
+            target_type = 'Case Statement'
+        elif isinstance(target, c_ast.Default):
+            target_type = 'Default Statement'
+        elif isinstance(target, c_ast.FuncDef):
+            target_type = 'Function Definition'
+        elif isinstance(target, c_ast.FuncDecl):
+            target_type = 'Function Declaration'
+        elif isinstance(target, c_ast.Return):
+            target_type = 'Return Statement'
+        elif isinstance(target, c_ast.Decl):
+            target_type = 'Declaration'
+        elif isinstance(target, c_ast.Continue):
+            target_type = 'Continue'
+        elif isinstance(target, c_ast.StructRef):
+            target_type = 'Struct Reference'
+        elif isinstance(target, c_ast.ID):
+            target_type = 'Identifier'
+        elif isinstance(target, c_ast.BinaryOp):
+            target_type = 'Binary Operation'
+        elif isinstance(target, c_ast.UnaryOp):
+            target_type = 'Unary Operation'
+        elif isinstance(target, c_ast.Assignment):
+            target_type = 'Assignment'
+        elif isinstance(target, c_ast.ArrayDecl):
+            target_type = 'Array Declaration'
+        elif isinstance(target, c_ast.ArrayRef):
+            target_type = 'Array Reference'
+        elif isinstance(target, c_ast.Struct):
+            target_type = 'Struct'
+        elif isinstance(target, c_ast.Union):
+            target_type = 'Union'
+        elif isinstance(target, c_ast.Typedef):
+            target_type = 'Typedef'
+        elif isinstance(target, c_ast.TypeDecl):
+            target_type = 'Type Declaration'
+        elif isinstance(target, c_ast.PtrDecl):
+            target_type = 'Pointer Declaration'
+        elif isinstance(target, c_ast.ExprList):
+            target_type = 'Expression List'
+        elif isinstance(target, c_ast.FuncCall):
+            target_type = 'Function Call'
+        elif isinstance(target, c_ast.Constant):
+            target_type = 'Constant'
+        elif isinstance(target, c_ast.Break):
+            target_type = 'Break Statement'
+        elif isinstance(target, c_ast.Continue):
+            target_type = 'Continue Statement'
+        elif isinstance(target, c_ast.Goto):
+            target_type = 'Goto'
+        elif isinstance(target, c_ast.Label):
+            target_type = 'Label'
+        else:
+            target_type = 'Unknown'
+
+        print(f"{source_type } (Line {source_code}) -> {target_type} (Line {target_code})")
+        # with open("node.txt", "a") as file:
+        #     file.write(f"{source_type } (Line {source_code}) -> {target_type} (Line {target_code})\n")
+        # file.close()
 
 
 def build_ast(code_list):
-    """
-    Build ASTs and their corresponding control flow graphs from code snippets.
-
-    Args:
-        code_list (list[str]): List of C code snippets as strings.
-
-    Returns:
-        tuple: (ASTStorage instance, list of networkx.DiGraph CFGs)
-    """
-    storage = ASTStorage()
-    Gs = []
-    for code in code_list:
-        storage.add_ast(code)
+    storage=ASTStorage()
+    Gs=[]
+    for i in range(len(code_list)):
+        # print(code_list[i])
+        storage.add_ast(code_list[i])
+        #storage.show_ast(i)
         G = nx.DiGraph()
-        build_control_flow_graph_recursive(storage.get_ast(len(storage.asts) - 1), G)
+        build_control_flow_graph_recursive(storage.get_ast(i), G)
         Gs.append(G)
-    return storage, Gs
+        #print_control_flow_graph(G)
+    return storage,Gs
 
 
 def main(CVE_id):
-    """
-    Main function: get code patches by CVE ID, build ASTs and CFGs.
-
-    Args:
-        CVE_id (str): CVE identifier string.
-
-    Returns:
-        tuple: (ASTStorage instance, list of CFG graphs, patch count)
-    """
-    list1, count = af_code.main(CVE_id)
-    storage, Gs = build_ast(list1)
-    return storage, Gs, count
+    list1,count=af_code.main(CVE_id)
+    # for i in list1:
+    #     print(i)
+    #构建ast
+    storage,Gs=build_ast(list1)
+    return storage,Gs,count
 
 # ==============================
 # Main Entry Point
