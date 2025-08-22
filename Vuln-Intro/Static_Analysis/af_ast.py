@@ -5,12 +5,12 @@ import networkx as nx
 
 class ASTStorage:
     def __init__(self):
-        self.asts = []  # 用于存储 AST 的列表
+        self.asts = []  # List for storing ASTs
 
     def add_ast(self, code):
         """
-        将 C 代码解析为 AST 并添加到列表中
-        :param code: C 代码字符串
+        Parse C code into an AST and add it to the list
+        :param code: C code string
         """
         parser = c_parser.CParser()
         ast = parser.parse(code)
@@ -18,9 +18,9 @@ class ASTStorage:
 
     def get_ast(self, index):
         """
-        获取指定索引的 AST
-        :param index: AST 的索引
-        :return: AST 节点
+        Get the AST at a specific index
+        :param index: Index of the AST
+        :return: AST node
         """
         if 0 <= index < len(self.asts):
             return self.asts[index]
@@ -29,15 +29,15 @@ class ASTStorage:
 
     def show_ast(self, index):
         """
-        打印指定索引的 AST
-        :param index: AST 的索引
+        Print the AST at a specific index
+        :param index: Index of the AST
         """
         ast = self.get_ast(index)
         ast.show(attrnames=True, nodenames=True, showcoord=True)
 
     def list_asts(self):
         """
-        列出所有存储的 AST 的简要信息
+        List brief information of all stored ASTs
         """
         for i, ast in enumerate(self.asts):
             print(f"AST {i}:")
@@ -53,7 +53,7 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
     if isinstance(node, c_ast.Compound):
         nodetype = 'Compound'
         prev_child_node = None
-        if node.block_items:  # 检查 block_items 是否为 None
+        if node.block_items:  # Check if block_items is None
             for child in node.block_items:
                 if prev_child_node is not None:
                     G.add_edge(prev_child_node, child)
@@ -66,13 +66,13 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
 
     elif isinstance(node, c_ast.For):
         nodetype = 'For Loop'
-        if node.init:  # 检查 init 是否为 None
+        if node.init:  # Check if init is None
             for child in node.init:
                 build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
         # build_control_flow_graph_recursive(node.cond, G, node, label_dict, pending_gotos)
         G.add_edge(node,node.stmt)
         build_control_flow_graph_recursive(node.stmt, G, node, label_dict, pending_gotos)
-        if node.next:  # 检查 next 是否为 None
+        if node.next:  # Check if next is None
             for child in node.next:
                 build_control_flow_graph_recursive(child, G, node, label_dict, pending_gotos)
 
@@ -98,7 +98,7 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
     elif isinstance(node, c_ast.Case):
         nodetype = 'Case Statement'
         prev_child_node = None
-        if node.stmts:  # 检查 stmts 是否为 None
+        if node.stmts:  # Check if stmts is None
             for child in node.stmts:
                 if prev_child_node is not None:
                     G.add_edge(prev_child_node, child)
@@ -112,7 +112,7 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
     elif isinstance(node, c_ast.Default):
         nodetype = 'Default Statement'
         prev_child_node = None
-        if node.stmts:  # 检查 stmts 是否为 None
+        if node.stmts:  # Check if stmts is None
             for child in node.stmts:
                 if prev_child_node is not None:
                     G.add_edge(prev_child_node, child)
@@ -125,12 +125,12 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
 
     elif isinstance(node, c_ast.If):
         nodetype = 'If Statement'
-        # 处理条件部分
+        # Handle condition part
         # cond_node = node.cond
         # G.add_edge(node, cond_node)
         # build_control_flow_graph_recursive(node.cond, G, node, label_dict, pending_gotos)
 
-        # 处理 iftrue 分支
+        # Handle iftrue branch
         if node.iftrue:
             if_true_node = node.iftrue
             if isinstance(if_true_node,c_ast.Compound):
@@ -148,7 +148,7 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
                 G.add_edge(node, if_true_node)
                 build_control_flow_graph_recursive(node.iftrue, G, node, label_dict, pending_gotos)
 
-        # 处理 iffalse 分支
+        # Handle iffalse branch
         if node.iffalse:
             if_false_node = node.iffalse
             if isinstance(if_false_node,c_ast.Compound):
@@ -225,7 +225,7 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
         label_dict[label_name] = node
         #print(label_name)
 
-        # 处理未解析的goto语句
+        # Handle unresolved goto statements
         # for goto_node, goto_label in list(pending_gotos):
         #
         #     if goto_label == label_name:
@@ -234,7 +234,7 @@ def build_control_flow_graph_recursive(node, G, prev_node=None, label_dict=None,
         #         G.add_edge(goto_node, node)
         #         pending_gotos.remove((goto_node, goto_label))
 
-        # 处理标签的子节点
+       # Handle child nodes of label
         G.add_edge(node, node.stmt)
         build_control_flow_graph_recursive(node.stmt, G, node, label_dict, pending_gotos)
 
