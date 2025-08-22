@@ -58,7 +58,6 @@ Vuln-Intro-main/
 #### Data_Crawling/ Module
 - **Purpose**: Automatically download patch information and related source code files
 - **Main Files**:
-  - `patch_list.py`: Downloads the list of historical commit URLs related to the target patch
   - `re_refactor.py`: Filters out types of refactorings that do not affect the vulnerability
   - `filter.py`: Filters out noisy statements from the patch data
 
@@ -225,4 +224,5 @@ Each example contains complete experimental data and results, which can be used 
 ## License
 
 This project follows the corresponding open-source license. Please check the license file in the project root directory for details.
+
 
