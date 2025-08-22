@@ -16,7 +16,6 @@ This directory contains scripts for automatically downloading patch information 
 
 ```bash
 
-
 # Filter refactorings
 python re_refactor.py 
 
@@ -24,4 +23,5 @@ python re_refactor.py
 python filter.py 
 
 ```
+
 
