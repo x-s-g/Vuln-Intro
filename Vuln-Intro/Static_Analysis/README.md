@@ -22,20 +22,21 @@ This directory contains scripts for static code analysis, including the construc
 
 ```bash
 # Construct AST before patch
-python af_ast.py CVE-2023-6111
+python af_ast.py 
 
 # Construct CFG before patch
-python af_cfg.py CVE-2023-6111
+python af_cfg.py 
 
 # Extract code before patch
-python af_code.py CVE-2023-6111
+python af_code.py 
 
 # Construct AST after patch
-python bf_ast.py CVE-2023-6111
+python bf_ast.py
 
 # Construct CFG after patch
-python bf_cfg.py CVE-2023-6111
+python bf_cfg.py
 
 # Extract code after patch
-python bf_code.py CVE-2023-6111
+python bf_code.py
+
 ```
