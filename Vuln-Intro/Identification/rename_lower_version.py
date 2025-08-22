@@ -9,7 +9,7 @@ from lxml import etree
 import af_code
 import filter
 import re
-import load_file
+#import load_file
 import re_refactor
 
 # Common C language types and keywords for function detection
