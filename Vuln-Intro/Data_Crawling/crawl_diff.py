@@ -222,7 +222,8 @@ def process_directory(html_dir: str = "htmls", output_dir: str = "diffs",filenam
 
         # Additionally, write txt file: plain diff
         plain_diff = collect_plain_diff_lines(blocks)
-        # print(plain_diff)
+        for line in plain_diff:
+            print(line)
         res = write_txt(output_dir,filename,  plain_diff)
     return res
 
@@ -235,7 +236,8 @@ if __name__ == "__main__":
     file_name ="patch.txt"
     try:
         output = os.path.abspath(process_directory(dir,outputdir,file_name))
-        print(f"Written file: {output}")
+        print("=================================================")
+        print(f"saved to file: {output}")
     except FileNotFoundError as e:
         print(f"Cannot find HTML files:：{e}")
         sys.exit(1)

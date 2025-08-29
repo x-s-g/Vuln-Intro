@@ -34,8 +34,8 @@ def extract_commit_links(htmls_dir, output_file):
             f.write(link + "\n")
 
     print(f"提取到的链接个数: {len(all_links)}")
-    # for link in all_links:
-    #     print(link)
+    for link in all_links:
+        print(link)
     return len(all_links)
 
 def main():
@@ -48,6 +48,8 @@ def main():
     htmls_path = os.path.join(htmls_dir, f"{cve_id}", "htmls")
     output_path = os.path.join(htmls_dir, f"{cve_id}", "test", output_file)
     extract_commit_links(htmls_path, output_path)
+    print("=================================================")
+    print(f"saved to file: {os.path.abspath(output_path)}")
 
 if __name__ == "__main__":
     main()
