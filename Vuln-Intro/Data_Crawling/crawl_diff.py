@@ -222,18 +222,20 @@ def process_directory(html_dir: str = "htmls", output_dir: str = "diffs",filenam
 
         # Additionally, write txt file: plain diff
         plain_diff = collect_plain_diff_lines(blocks)
-        print(plain_diff)
-        # res = write_txt(output_dir,filename,  plain_diff)
+        # print(plain_diff)
+        res = write_txt(output_dir,filename,  plain_diff)
     return res
 
 
 if __name__ == "__main__":
-    htmls_dir: str ="../"
+    htmls_dir: str = "../"
     CVE_ID = "CVE-2023-6176"
-    dir= os.path.join(htmls_dir, CVE_ID)
+    dir = os.path.join(htmls_dir, CVE_ID)
+    outputdir = os.path.join(htmls_dir, CVE_ID,"test")
+    file_name ="patch.txt"
     try:
-        output = os.path.abspath(process_directory(dir,dir))
-        # print(f"Written file: {output}")
+        output = os.path.abspath(process_directory(dir,outputdir,file_name))
+        print(f"Written file: {output}")
     except FileNotFoundError as e:
         print(f"Cannot find HTML files:：{e}")
         sys.exit(1)

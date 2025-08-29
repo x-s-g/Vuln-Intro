@@ -29,13 +29,13 @@ def extract_commit_links(htmls_dir, output_file):
                     all_links.add(full_url)
 
     # 保存到文件
-    # with open(output_file, "w", encoding="utf-8") as f:
-    #     for link in all_links:
-    #         f.write(link + "\n")
+    with open(output_file, "w", encoding="utf-8") as f:
+        for link in all_links:
+            f.write(link + "\n")
 
     print(f"提取到的链接个数: {len(all_links)}")
-    for link in all_links:
-        print(link)
+    # for link in all_links:
+    #     print(link)
     return len(all_links)
 
 def main():
@@ -46,7 +46,7 @@ def main():
     cve_id="CVE-2023-6176"
     output_file = "patch_list.txt"
     htmls_path = os.path.join(htmls_dir, f"{cve_id}", "htmls")
-    output_path = os.path.join(htmls_dir, f"{cve_id}", output_file)
+    output_path = os.path.join(htmls_dir, f"{cve_id}", "test", output_file)
     extract_commit_links(htmls_path, output_path)
 
 if __name__ == "__main__":
