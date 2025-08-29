@@ -34,41 +34,72 @@ Vuln-Intro-main/
 ### Dataset/ Directory
 
 #### Dataset/Dataset/
-- **Purpose**: Stores the complete experimental dataset, including all CVE links collected from NVD.
+- **Purpose**: Stores the complete experimental dataset (large corpus) including CVE links collected from NVD.
 - **Contents**:
-  - `CVE/`: Directory containing all CVE vulnerability data
-  - `CVE_list.txt`: CVE list file
-  - `README.txt`: Dataset description document
+  - `CVE/`: Full CVE vulnerability data
+  - `CVE_list.txt`: List of CVE IDs
+  - `README.txt`: Dataset description
 
-#### Dataset/Example/ 
-- **Purpose**: Contains ten sample CVE cases, including raw data and experimental results.
-- **Structure**: Each CVE case includes the following files:
-  - `patch.txt`: Patch information related to the CVE
-  - `patch_list.txt`: List of all commit URLs related to vulnerable files
-  - `commit/`: All commits related to vulnerable files
-  - `result/`: Intermediate and final outputs of the experiment
-  - `a.c`: Complete source code of the vulnerable file before patch
-  - `b.c`: Complete source code of the vulnerable file after patch
-  - `Vul-Crit-Seq.txt`: Vulnerability-critical statement sequence extracted during the experiment
-  - `Vul-Rel-St.txt`: Vulnerability-related statements extracted during the experiment
-  - `<hash>.txt`: Final result — vulnerability-introducing commit, named by the corresponding commit hash
+#### Dataset/Example/
+- **Purpose**: Contains representative CVE cases with both raw inputs and resulting artifacts for end-to-end demonstration.
+- **Typical per-CVE layout**:
+  - `patch.txt`: Patch diff blocks related to the CVE
+  - `patch_list.txt`: List of URLs to relevant commits/patches
+  - `af#<path>` / `bf#<path>`: Full source of affected files before/after the patch (flattened path markers)
+  - `change_low_version/`: Trace chain files for lower-version changes (historical tracking)
+  - `commit/`: Raw commit metadata and patch contents
+  - `htmls/` and `diff.html`: Archived HTML snapshots of patch/commit pages
+  - `result/`: Intermediate and final outputs (e.g., `af#*`, `bf#*`, `Vul-Crit-Seq.txt`, `Vul-Rel-St.txt`, `groundtruth.txt`, final `<hash>.txt`)
+  - `Vul-Crit-Seq.txt`: Extracted vulnerability-critical statement sequence (top-level copy)
+
+Example (abridged):
+```
+Dataset/Example/CVE-XXXX-YYYY/
+├── af#...                             # before-patch source (flattened path)
+├── bf#...                             # after-patch source (flattened path)
+├── change_low_version/                # historical trace chain files
+├── commit/                            # raw commit metadata/diffs
+├── diff.html                          # HTML for crawled patch/commit data
+├── htmls/                             # HTMLs for crawled commit links
+├── patch_list.txt                     # commit/patch URLs
+├── patch.txt                          # patch diff blocks
+├── result/
+│   ├── af#...
+│   ├── bf#...
+│   ├── Vul-Crit-Seq.txt
+│   ├── Vul-Rel-St.txt
+│   ├── groundtruth.txt
+│   └── <hash>.txt                     # final vulnerability-introducing commit
+└── Vul-Crit-Seq.txt                   # top-level copy
+```
 
 ### Vuln-Intro/ Directory
 
 #### Data_Crawling/ Module
 - **Purpose**: Automatically download patch information and related source code files
 - **Main Files**:
+  - `crawl_diff.py`: Crawl raw patch diffs/commit data for a CVE
+  - `getLink.py`: Retrieve patch/commit links related to the target CVE
   - `re_refactor.py`: Filters out types of refactorings that do not affect the vulnerability
   - `filter.py`: Filters out noisy statements from the patch data
+  - `nvd/getCveId.py`: Fetch target CVE IDs from NVD and export a list
 
 **Usage**:
 ```bash
+# (Optional) Fetch target CVE IDs from NVD
+python nvd/getCveId.py
 
-# Filter refactorings
-python re_refactor.py 
+# Get patch/commit links for a CVE
+python getLink.py
 
-# Filter noise
-python filter.py 
+# Crawl raw diffs/commits for the CVE
+python crawl_diff.py
+
+# Remove refactoring-only chunks
+python re_refactor.py
+
+# Filter noise statements for the CVE
+python filter.py
 ```
 
 #### Identification/ Module
@@ -161,8 +192,11 @@ pip install requests lxml networkx pycparser
 ### 1. Data Crawling
 ```bash
 cd Vuln-Intro/Data_Crawling
-python patch_list.py <CVE-ID>
-python filter.py <CVE-ID>
+python nvd/getCveId.py            # Optional
+python getLink.py                 # Produce patch_list.txt
+python crawl_diff.py              # Download raw diffs/commits
+python re_refactor.py             # Remove refactoring-only chunks
+python filter.py                  # Filter noisy statements
 ```
 
 ### 2. Static Analysis
@@ -209,6 +243,7 @@ Each example contains complete experimental data and results, which can be used 
 - `Vul-Crit-Seq.txt`: Extracted key vulnerability statement sequence  
 - `Vul-Rel-St.txt`: Extracted vulnerability-related statements  
 - `<hash>.txt`: Final experimental result — vulnerability introduction commit
+
 
 ## Notes
 
