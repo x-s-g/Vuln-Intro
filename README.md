@@ -5,9 +5,9 @@ This repository contains the code used to run experiments for the paper: "Accura
 Vuln-Intro is a toolkit designed for localizing the commit where a vulnerability was introduced. It analyzes CVE (Common Vulnerabilities and Exposures) patches to trace back to the specific commit that originally introduced the vulnerability. The toolkit includes a complete pipeline of data collection, static analysis, and vulnerability identification.
 
 ## Attention
-1. The main script can be executed directly using match.py.
+1. The main script can be executed directly by running Vuln-Intro/Vuln-Intro/Identification/match.py, and the output will be the final result.
 
-2. Copy the CVE files from the example directory to your working directory to use them, following the example of the cve-2023-6176 file.
+2. Copy the CVE files from the Dataset/Example and Dataset/Datatset/CVE directory to Vuln-Intro directory to use them, following the example of the cve-2023-6176 file.
 
 3. Each specific functionality can be tested by running its corresponding script to examine the output results.
 
@@ -71,6 +71,31 @@ Dataset/Example/CVE-XXXX-YYYY/
 │   ├── groundtruth.txt
 │   └── <hash>.txt                     # final vulnerability-introducing commit
 └── Vul-Crit-Seq.txt                   # top-level copy
+```
+
+## Dependency Requirements
+
+### Python Standard Library
+- `from __future__ import annotations`
+- `import time`
+- `import re`
+- `import os`
+- `import argparse`
+- `import logging`
+- `from dataclasses import dataclass, field`
+- `from pathlib import Path`
+- `from typing import List, Dict, Optional, Tuple, Set, Any`
+- `from collections import Counter`
+
+### Third-Party Libraries
+- `requests`: HTTP request library  
+- `lxml`: XML and HTML processing library  
+- `networkx`: Graph theory and network analysis library  
+- `pycparser`: C language parser
+
+**Install Dependencies**:
+```bash
+pip install requests lxml networkx pycparser
 ```
 
 ### Vuln-Intro/ Directory
@@ -162,31 +187,6 @@ python bf_cfg.py
 python bf_code.py
 ```
 
-## Dependency Requirements
-
-### Python Standard Library
-- `from __future__ import annotations`
-- `import time`
-- `import re`
-- `import os`
-- `import argparse`
-- `import logging`
-- `from dataclasses import dataclass, field`
-- `from pathlib import Path`
-- `from typing import List, Dict, Optional, Tuple, Set, Any`
-- `from collections import Counter`
-
-### Third-Party Libraries
-- `requests`: HTTP request library  
-- `lxml`: XML and HTML processing library  
-- `networkx`: Graph theory and network analysis library  
-- `pycparser`: C language parser
-
-**Install Dependencies**:
-```bash
-pip install requests lxml networkx pycparser
-```
-
 ## Usage Workflow
 
 ### 1. Data Crawling
@@ -256,6 +256,7 @@ Each example contains complete experimental data and results, which can be used 
 ## License
 
 This project follows the corresponding open-source license. Please check the license file in the project root directory for details.
+
 
 
 

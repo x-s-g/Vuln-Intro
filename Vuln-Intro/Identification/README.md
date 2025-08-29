@@ -2,6 +2,9 @@
 
 This directory contains scripts for vulnerability identification and matching.
 
+# Attention
+The main script can be executed directly by running Vuln-Intro/Vuln-Intro/Identification/match.py, and the output will be the final result. The output of match may differ from the ground truth results because the tool can make misjudgments, resulting in false positives or false negatives.
+
 ## Scripts
 
 - `match.py`: Matches historical commits with the vulnerability-critical statement sequence. Input: CVE-ID. Output: File path where a match is found.
@@ -34,3 +37,5 @@ python select_path.py
 python traver.py 
 
 ```
+
+
