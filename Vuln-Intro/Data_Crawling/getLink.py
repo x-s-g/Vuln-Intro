@@ -29,11 +29,13 @@ def extract_commit_links(htmls_dir, output_file):
                     all_links.add(full_url)
 
     # 保存到文件
-    with open(output_file, "w", encoding="utf-8") as f:
-        for link in all_links:
-            f.write(link + "\n")
+    # with open(output_file, "w", encoding="utf-8") as f:
+    #     for link in all_links:
+    #         f.write(link + "\n")
 
     print(f"提取到的链接个数: {len(all_links)}")
+    for link in all_links:
+        print(link)
     return len(all_links)
 
 def main():
