@@ -44,7 +44,7 @@ def sort_by_second_element(data):
 
 def main(cve_id):
     # Get filtered patch content list
-    list2 = filter.main(CVE_id)
+    list2 = filter.main(cve_id)
     # Find functions changed in the patch
     func_name_list = af_code.find_patch_func(list2)
     # Get vulnerable links from patch_label
@@ -152,6 +152,11 @@ def main(cve_id):
 # Main Entry Point
 # ==============================
 
+import argparse
+
 if __name__ == "__main__":
-    CVE_id = "CVE-2023-6176"
-    main(CVE_id)
+    parser = argparse.ArgumentParser(description="Run script with a CVE ID.")
+    parser.add_argument("CVE_id", type=str, help="The CVE ID to process, e.g., CVE-2021-38201")
+    args = parser.parse_args()
+
+    main(args.CVE_id)
