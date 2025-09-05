@@ -139,7 +139,7 @@ python filter.py
 **Usage**:
 ```bash
 # Match historical commits
-python match.py 
+python match.py <CVE-ID>
 
 # Generate patch labels
 python patch_label.py
@@ -256,6 +256,7 @@ Each example contains complete experimental data and results, which can be used 
 ## License
 
 This project follows the corresponding open-source license. Please check the license file in the project root directory for details.
+
 
 
 
