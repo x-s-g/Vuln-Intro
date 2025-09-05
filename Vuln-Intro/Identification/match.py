@@ -152,9 +152,9 @@ def main(cve_id):
 # Main Entry Point
 # ==============================
 
-if __name__ == "__main__":
-    CVE_id = "CVE-2023-6176"
-    main(CVE_id)
+# if __name__ == "__main__":
+#     CVE_id = "CVE-2023-6176"
+#     main(CVE_id)
 
 import argparse
 
