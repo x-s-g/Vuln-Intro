@@ -22,7 +22,7 @@ The main script can be executed directly by running Vuln-Intro/Vuln-Intro/Identi
 
 ```bash
 # Match historical commits
-python match.p
+python match.py <CVE-ID>
 
 # Generate patch labels
 python patch_label.py
@@ -37,5 +37,6 @@ python select_path.py
 python traver.py 
 
 ```
+
 
 
